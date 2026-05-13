@@ -1,0 +1,8 @@
+{
+  "extensionDescription": {
+    "message": "Rewrite Thunderbird compose drafts with LLM providers while preserving inline media."
+  },
+  "extensionName": {
+    "message": "ThunderClaude"
+  }
+}

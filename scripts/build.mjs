@@ -5,7 +5,7 @@ import { cp, mkdir, readFile, rm } from 'node:fs/promises';
 const rootDir = new URL('../', import.meta.url);
 const distDir = new URL('dist/', rootDir);
 const unpackedDir = new URL('unpacked/', distDir);
-const pathsToCopy = ['manifest.json', 'icons', 'src'];
+const pathsToCopy = ['manifest.json', '_locales', 'icons', 'src'];
 const manifest = JSON.parse(await readFile(new URL('manifest.json', rootDir), 'utf8'));
 const xpiName = `thunderclaude-${manifest.version}.xpi`;
 

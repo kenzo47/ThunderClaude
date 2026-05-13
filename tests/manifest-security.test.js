@@ -16,6 +16,12 @@ async function readManifest() {
   return JSON.parse(await readFile(new URL('../manifest.json', import.meta.url), 'utf8'));
 }
 
+async function readLocaleMessages() {
+  return JSON.parse(
+    await readFile(new URL('../_locales/en/messages.json', import.meta.url), 'utf8')
+  );
+}
+
 describe('manifest security metadata', () => {
   it('keeps provider host permissions exact', async () => {
     const manifest = await readManifest();
@@ -43,5 +49,16 @@ describe('manifest security metadata', () => {
     const manifest = await readManifest();
 
     expect(manifest.permissions).toEqual(['compose', 'scripting', 'storage']);
+  });
+
+  it('uses the English locale for manifest text', async () => {
+    const manifest = await readManifest();
+    const messages = await readLocaleMessages();
+
+    expect(manifest.default_locale).toBe('en');
+    expect(manifest.name).toBe('__MSG_extensionName__');
+    expect(manifest.description).toBe('__MSG_extensionDescription__');
+    expect(messages.extensionName.message).toBe('ThunderClaude');
+    expect(messages.extensionDescription.message).toContain('preserving inline media');
   });
 });
