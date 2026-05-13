@@ -27,6 +27,8 @@ export default [
         messenger: 'readonly',
         process: 'readonly',
         setTimeout: 'readonly',
+        atob: 'readonly',
+        btoa: 'readonly',
       },
     },
     rules: {
