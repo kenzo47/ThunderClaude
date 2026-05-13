@@ -124,12 +124,12 @@ function buildPrompt({ instruction, tokenizedHtml }) {
   };
 }
 
-async function defaultResolveProviderCredential(providerId) {
+async function defaultResolveProviderCredential(providerId, options = {}) {
   if (providerId === 'ollama') {
     return '';
   }
 
-  const plainValue = await getPlainValue(providerId);
+  const plainValue = await getPlainValue(providerId, options);
   if (plainValue !== null) {
     return plainValue;
   }
@@ -143,7 +143,7 @@ async function defaultResolveProviderCredential(providerId) {
     });
   }
 
-  const encryptedValue = await getEncryptedValue(providerId, key);
+  const encryptedValue = await getEncryptedValue(providerId, key, options);
   if (encryptedValue !== null) {
     return encryptedValue;
   }
@@ -168,7 +168,7 @@ export async function rewriteComposeDraft(message, options = {}) {
   }
 
   const getSettingsImpl = options.getSettingsImpl ?? getSettings;
-  const settings = await getSettingsImpl();
+  const settings = await getSettingsImpl(options);
   if (!settings.onboardingComplete) {
     throw new RewriteError('Finish ThunderClaude onboarding before rewriting drafts.', {
       code: 'onboarding_required',
@@ -193,7 +193,7 @@ export async function rewriteComposeDraft(message, options = {}) {
   });
   const resolveProviderCredential =
     options.resolveProviderCredential ?? defaultResolveProviderCredential;
-  const key = await resolveProviderCredential(providerId);
+  const key = await resolveProviderCredential(providerId, options);
   const model = resolveModel(provider, message, settings);
   const rawOutput = await provider.rewrite({
     baseUrl: message?.baseUrl ?? settings.customBaseUrlByProvider[providerId],
