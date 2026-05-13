@@ -1,4 +1,4 @@
-import { readFile } from 'node:fs/promises';
+import { readdir, readFile } from 'node:fs/promises';
 
 import { describe, expect, it } from 'vitest';
 
@@ -8,21 +8,28 @@ const EXTENSION_PAGES = [
   'src/popup/popup.html',
 ];
 
-const SOURCE_FILES = [
-  'src/background/index.js',
-  'src/background/inline-media.js',
-  'src/background/options-router.js',
-  'src/background/rewrite.js',
-  'src/lib/i18n.js',
-  'src/lib/log.js',
-  'src/lib/sanitize.js',
-  'src/onboarding/welcome.js',
-  'src/options/options.js',
-  'src/popup/popup.js',
-];
+const SRC_ROOT = new URL('../src/', import.meta.url);
 
 async function readProjectFile(path) {
   return readFile(new URL(`../${path}`, import.meta.url), 'utf8');
+}
+
+async function listSourceFiles(directory = SRC_ROOT, pathPrefix = 'src') {
+  const entries = await readdir(directory, { withFileTypes: true });
+  const sortedEntries = entries.toSorted((left, right) => left.name.localeCompare(right.name));
+  const files = [];
+
+  for (const entry of sortedEntries) {
+    const childPath = `${pathPrefix}/${entry.name}`;
+
+    if (entry.isDirectory()) {
+      files.push(...(await listSourceFiles(new URL(`${entry.name}/`, directory), childPath)));
+    } else if (entry.isFile() && entry.name.endsWith('.js')) {
+      files.push(childPath);
+    }
+  }
+
+  return files;
 }
 
 function readCspContent(html) {
@@ -41,7 +48,7 @@ describe('static extension security', () => {
   });
 
   it('does not use unsafe html injection or dynamic code execution', async () => {
-    for (const file of SOURCE_FILES) {
+    for (const file of await listSourceFiles()) {
       const source = await readProjectFile(file);
 
       expect(source, file).not.toMatch(/\binnerHTML\s*=/);
@@ -52,7 +59,7 @@ describe('static extension security', () => {
   });
 
   it('routes extension warnings through the redacting logger', async () => {
-    for (const file of SOURCE_FILES.filter((path) => path !== 'src/lib/log.js')) {
+    for (const file of (await listSourceFiles()).filter((path) => path !== 'src/lib/log.js')) {
       const source = await readProjectFile(file);
 
       expect(source, file).not.toMatch(/\bconsole\.(?:warn|error)\s*\(/);
