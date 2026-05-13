@@ -1,3 +1,5 @@
+import { warn } from '../lib/log.js';
+
 const thunderbird = globalThis.messenger ?? globalThis.browser;
 
 const steps = {
@@ -278,7 +280,7 @@ try {
       : 'Choose a provider, verify it, then open a compose window.'
   );
 } catch (error) {
-  console.warn('ThunderClaude onboarding failed to load.', error);
+  warn('ThunderClaude onboarding failed to load.', error);
   setError(error.message);
   setStatus('Setup failed to load.');
 }

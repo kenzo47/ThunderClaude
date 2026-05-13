@@ -1,3 +1,5 @@
+import { warn } from '../lib/log.js';
+
 const thunderbird = globalThis.messenger ?? globalThis.browser;
 
 const status = document.querySelector('#status');
@@ -226,7 +228,7 @@ try {
     snapshot.session.locked ? 'Settings loaded. Encrypted storage is locked.' : 'Settings loaded.'
   );
 } catch (error) {
-  console.warn('ThunderClaude options failed to load.', error);
+  warn('ThunderClaude options failed to load.', error);
   setError(error.message);
   setStatus('Options failed to load.');
 }

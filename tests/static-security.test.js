@@ -14,6 +14,7 @@ const SOURCE_FILES = [
   'src/background/options-router.js',
   'src/background/rewrite.js',
   'src/lib/i18n.js',
+  'src/lib/log.js',
   'src/lib/sanitize.js',
   'src/onboarding/welcome.js',
   'src/options/options.js',
@@ -47,6 +48,14 @@ describe('static extension security', () => {
       expect(source, file).not.toMatch(/\binsertAdjacentHTML\s*\(/);
       expect(source, file).not.toMatch(/\beval\s*\(/);
       expect(source, file).not.toMatch(/\bnew\s+Function\b/);
+    }
+  });
+
+  it('routes extension warnings through the redacting logger', async () => {
+    for (const file of SOURCE_FILES.filter((path) => path !== 'src/lib/log.js')) {
+      const source = await readProjectFile(file);
+
+      expect(source, file).not.toMatch(/\bconsole\.(?:warn|error)\s*\(/);
     }
   });
 });

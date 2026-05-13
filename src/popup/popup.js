@@ -1,3 +1,5 @@
+import { warn } from '../lib/log.js';
+
 const thunderbird = globalThis.messenger ?? globalThis.browser;
 
 const FALLBACK_PROVIDERS = [
@@ -98,7 +100,7 @@ async function loadOptionsSnapshot() {
 
     providers = optionsSnapshot.providers;
   } catch (error) {
-    console.warn('ThunderClaude popup could not load defaults.', error);
+    warn('ThunderClaude popup could not load defaults.', error);
   }
 
   return true;
@@ -328,7 +330,7 @@ form.addEventListener('submit', async (event) => {
   try {
     await submitRewrite();
   } catch (error) {
-    console.warn('ThunderClaude rewrite failed.', error);
+    warn('ThunderClaude rewrite failed.', error);
     if (error.code === 'session_locked') {
       markSessionLocked();
     }
@@ -345,7 +347,7 @@ try {
     await detectComposeTab();
   }
 } catch (error) {
-  console.warn('ThunderClaude popup could not read compose details.', error);
+  warn('ThunderClaude popup could not read compose details.', error);
   status.textContent = error.message;
   setControlsDisabled(true);
 }
