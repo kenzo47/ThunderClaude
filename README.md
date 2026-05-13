@@ -55,8 +55,8 @@ Prepare the unpacked extension files:
 npm run build
 ```
 
-This writes `dist/`, which is useful for inspection and packaging work. The XPI
-packaging script is planned in `docs/PLAN.md` step 21.
+This writes `dist/unpacked/` for inspection and `dist/thunderclaude-0.0.0.xpi`
+for local installation testing.
 
 ## Install
 
@@ -75,17 +75,23 @@ On first run:
 
 ### Packaged Install
 
-Packaged `.xpi` installation is not available yet. After step 21 adds the
-packaging script, the expected flow is:
+Build the XPI:
 
-1. Build the XPI.
-2. Open Thunderbird Add-ons Manager.
-3. Use the gear menu to choose "Install Add-on From File".
-4. Select the generated `.xpi`.
+```bash
+npm run build
+```
+
+Then install it:
+
+1. Open Thunderbird Add-ons Manager.
+2. Use the gear menu to choose "Install Add-on From File".
+3. Select `dist/thunderclaude-0.0.0.xpi`.
 
 Thunderbird's official add-on install guide documents the Add-ons Manager file
 install flow:
 https://support.mozilla.org/kb/installing-addon-thunderbird
+
+Release signing notes live in `docs/RELEASE.md`.
 
 ## Screenshots
 
