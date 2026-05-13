@@ -6,6 +6,9 @@
   "version": "0.0.0",
   "browser_specific_settings": {
     "gecko": {
+      "data_collection_permissions": {
+        "required": ["authenticationInfo", "personalCommunications"]
+      },
       "id": "{4e8df8a7-6f5b-4f2b-8d8a-0d1b7178f01a}",
       "strict_min_version": "128.0"
     }
