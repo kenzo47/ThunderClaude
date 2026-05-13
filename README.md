@@ -10,7 +10,7 @@ must read `AGENTS.md` before changing files.
 ## Current Status
 
 This repository is under active pre-release work. Development loading works, but
-signed release packaging is still pending.
+public release signing is still pending.
 
 ## Requirements
 
@@ -92,6 +92,7 @@ install flow:
 https://support.mozilla.org/kb/installing-addon-thunderbird
 
 Release signing notes live in `docs/RELEASE.md`.
+Manual Thunderbird verification steps live in `docs/MANUAL-VERIFY.md`.
 
 ## Screenshots
 
