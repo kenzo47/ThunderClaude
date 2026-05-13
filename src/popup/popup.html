@@ -11,10 +11,70 @@
     <link rel="stylesheet" href="popup.css" />
   </head>
   <body>
-    <main>
-      <h1>ThunderClaude</h1>
-      <p id="status" class="status">Checking the current compose window...</p>
-      <button id="rewrite" type="button" disabled>Rewrite draft</button>
+    <main class="popup-shell">
+      <header class="topbar">
+        <div>
+          <h1>ThunderClaude</h1>
+          <p id="status" class="status" aria-live="polite">Checking compose window...</p>
+        </div>
+        <span id="compose-mode" class="mode-badge" hidden></span>
+      </header>
+
+      <form id="rewrite-form" class="rewrite-form">
+        <fieldset class="preset-group">
+          <legend>Preset</legend>
+          <div class="preset-grid" role="radiogroup" aria-label="Rewrite preset">
+            <button class="preset-chip is-selected" type="button" data-preset="make-formal">
+              Formal
+            </button>
+            <button class="preset-chip" type="button" data-preset="make-casual">Casual</button>
+            <button class="preset-chip" type="button" data-preset="shorten">Shorten</button>
+            <button class="preset-chip" type="button" data-preset="expand">Expand</button>
+            <button class="preset-chip" type="button" data-preset="fix-grammar">Grammar</button>
+          </div>
+        </fieldset>
+
+        <label class="field">
+          <span>Custom instruction</span>
+          <textarea
+            id="custom-prompt"
+            name="customPrompt"
+            rows="4"
+            maxlength="1000"
+            placeholder="Optional, overrides the selected preset"
+          ></textarea>
+        </label>
+
+        <div class="field-grid">
+          <label class="field">
+            <span>Provider</span>
+            <select id="provider" name="providerId"></select>
+          </label>
+          <label class="field">
+            <span>Model</span>
+            <select id="model" name="modelId"></select>
+          </label>
+        </div>
+
+        <label id="custom-model-field" class="field" hidden>
+          <span>Custom model</span>
+          <input id="custom-model" name="customModel" autocomplete="off" />
+        </label>
+
+        <label id="base-url-field" class="field" hidden>
+          <span>Base URL</span>
+          <input
+            id="base-url"
+            name="baseUrl"
+            autocomplete="off"
+            placeholder="https://provider.example/v1"
+          />
+        </label>
+
+        <p id="error" class="error" role="alert" hidden></p>
+
+        <button id="rewrite" class="primary-action" type="submit" disabled>Rewrite draft</button>
+      </form>
     </main>
     <script type="module" src="popup.js"></script>
   </body>
