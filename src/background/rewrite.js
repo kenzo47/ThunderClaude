@@ -46,7 +46,8 @@ function getThunderbirdApi(thunderbird) {
   return resolvedApi;
 }
 
-function normalizeInstruction({ preset, customPrompt }) {
+function normalizeInstruction(message) {
+  const { customPrompt, preset } = message;
   const custom = customPrompt?.trim();
 
   if (custom) {
@@ -57,9 +58,25 @@ function normalizeInstruction({ preset, customPrompt }) {
     return PRESETS[preset];
   }
 
+  if (preset === 'translate') {
+    return normalizeTranslateInstruction(message);
+  }
+
   throw new RewriteError('Choose a rewrite preset or enter a custom instruction.', {
     code: 'missing_rewrite_instruction',
   });
+}
+
+function normalizeTranslateInstruction({ targetLanguage }) {
+  const language = targetLanguage?.trim();
+
+  if (!language) {
+    throw new RewriteError('Choose a target language.', {
+      code: 'missing_target_language',
+    });
+  }
+
+  return `Translate the email to ${language}. Preserve meaning, formatting, and tone.`;
 }
 
 function resolveModel(provider, { modelId, customModel }, settings) {

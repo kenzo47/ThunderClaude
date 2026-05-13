@@ -120,6 +120,55 @@ describe('rewrite orchestrator', () => {
     expect(thunderbird.setCalls[0].details.body).toBe('<p>Bonjour</p>');
   });
 
+  it('builds translate instructions with a target language', async () => {
+    const providerCalls = [];
+    const thunderbird = createThunderbird('<p>Hello</p>');
+    const provider = createProvider('<p>Bonjour</p>', providerCalls);
+
+    await rewriteComposeDraft(
+      {
+        action: 'rewrite',
+        preset: 'translate',
+        providerId: 'test-provider',
+        tabId: 7,
+        targetLanguage: 'French',
+      },
+      {
+        getSettingsImpl: async () => getTestSettings(),
+        getProviderImpl: () => provider,
+        resolveProviderCredential: async () => 'stored-provider-key',
+        thunderbird,
+      }
+    );
+
+    expect(providerCalls[0].user).toContain('Translate the email to French.');
+    expect(thunderbird.setCalls[0].details.body).toBe('<p>Bonjour</p>');
+  });
+
+  it('requires a target language for translate', async () => {
+    const thunderbird = createThunderbird('<p>Hello</p>');
+    const provider = createProvider('<p>Unused</p>');
+
+    await expect(
+      rewriteComposeDraft(
+        {
+          action: 'rewrite',
+          preset: 'translate',
+          providerId: 'test-provider',
+          tabId: 7,
+        },
+        {
+          getSettingsImpl: async () => getTestSettings(),
+          getProviderImpl: () => provider,
+          resolveProviderCredential: async () => 'stored-provider-key',
+          thunderbird,
+        }
+      )
+    ).rejects.toMatchObject({
+      code: 'missing_target_language',
+    });
+  });
+
   it('does not overwrite the draft when inline media validation fails', async () => {
     const thunderbird = createThunderbird('<p>Hello<img src="cid:first"></p>');
     const provider = createProvider('<p>AI dropped the image.</p>');

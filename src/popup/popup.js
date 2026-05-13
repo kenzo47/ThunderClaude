@@ -27,6 +27,8 @@ const customModelInput = document.querySelector('#custom-model');
 const baseUrlField = document.querySelector('#base-url-field');
 const baseUrlInput = document.querySelector('#base-url');
 const customPrompt = document.querySelector('#custom-prompt');
+const targetLanguageField = document.querySelector('#target-language-field');
+const targetLanguage = document.querySelector('#target-language');
 const presetButtons = [...document.querySelectorAll('[data-preset]')];
 
 let activeTabId = null;
@@ -47,6 +49,7 @@ function setControlsDisabled(disabled) {
     customModelInput,
     baseUrlInput,
     customPrompt,
+    targetLanguage,
     rewriteButton,
   ]) {
     control.disabled = disabled;
@@ -136,6 +139,8 @@ function selectPreset(button) {
     presetButton.classList.toggle('is-selected', isSelected);
     presetButton.setAttribute('aria-checked', String(isSelected));
   }
+
+  targetLanguageField.hidden = selectedPreset !== 'translate';
 }
 
 function currentPayload() {
@@ -162,6 +167,7 @@ function currentPayload() {
     preset: custom ? undefined : selectedPreset,
     providerId: provider.id,
     tabId: activeTabId,
+    targetLanguage: selectedPreset === 'translate' && !custom ? targetLanguage.value : undefined,
   };
 }
 
