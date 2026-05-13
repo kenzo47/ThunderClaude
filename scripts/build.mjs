@@ -3,14 +3,16 @@ import { cp, mkdir, rm } from 'node:fs/promises';
 
 const rootDir = new URL('../', import.meta.url);
 const distDir = new URL('dist/', rootDir);
-const manifestFile = new URL('manifest.json', rootDir);
+const pathsToCopy = ['manifest.json', 'icons', 'src'];
 
 await rm(distDir, { force: true, recursive: true });
 await mkdir(distDir, { recursive: true });
 
-if (existsSync(manifestFile)) {
-  await cp(manifestFile, new URL('manifest.json', distDir));
-  console.log('Created dist/ with manifest.json');
-} else {
-  console.log('No manifest.json yet; prepared empty dist/ for the scaffold.');
+for (const path of pathsToCopy) {
+  const source = new URL(path, rootDir);
+  if (existsSync(source)) {
+    await cp(source, new URL(path, distDir), { recursive: true });
+  }
 }
+
+console.log('Prepared dist/ extension files.');

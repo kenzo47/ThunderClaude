@@ -1,6 +1,8 @@
 import { spawn } from 'node:child_process';
 
-const child = spawn('web-ext', ['run', '--target=thunderbird'], {
+const thunderbirdBinary = process.env.THUNDERBIRD_BINARY ?? 'thunderbird';
+
+const child = spawn('web-ext', ['run', '--firefox', thunderbirdBinary], {
   shell: process.platform === 'win32',
   stdio: 'inherit',
 });

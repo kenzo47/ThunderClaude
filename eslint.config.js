@@ -23,6 +23,8 @@ export default [
         crypto: 'readonly',
         document: 'readonly',
         fetch: 'readonly',
+        globalThis: 'readonly',
+        messenger: 'readonly',
         process: 'readonly',
         setTimeout: 'readonly',
       },
