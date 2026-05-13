@@ -9,8 +9,10 @@ import './providers/openrouter.js';
 
 import { getProvider } from './providers/index.js';
 import { getEncryptedValue, getPlainValue } from './secure-storage.js';
+import { getSettings } from './settings.js';
 import { getSessionKey } from './session-key.js';
 import { restore, tokenize } from './inline-media.js';
+import { handleOptionsMessage } from './options-router.js';
 import { allowlistHtml } from '../lib/sanitize.js';
 
 const PLACEHOLDER_RULE =
@@ -60,7 +62,7 @@ function normalizeInstruction({ preset, customPrompt }) {
   });
 }
 
-function resolveModel(provider, { modelId, customModel }) {
+function resolveModel(provider, { modelId, customModel }, settings) {
   if (modelId && modelId !== 'custom') {
     return modelId;
   }
@@ -69,7 +71,7 @@ function resolveModel(provider, { modelId, customModel }) {
     return customModel.trim();
   }
 
-  return provider.defaultModel;
+  return settings.defaultModelByProvider[provider.id] ?? provider.defaultModel;
 }
 
 function buildPrompt({ instruction, tokenizedHtml }) {
@@ -127,7 +129,9 @@ export async function rewriteComposeDraft(message, options = {}) {
     });
   }
 
-  const providerId = message?.providerId;
+  const getSettingsImpl = options.getSettingsImpl ?? getSettings;
+  const settings = await getSettingsImpl();
+  const providerId = message?.providerId ?? settings.defaultProviderId;
   if (!providerId) {
     throw new RewriteError('A provider is required.', {
       code: 'missing_provider',
@@ -146,9 +150,9 @@ export async function rewriteComposeDraft(message, options = {}) {
   const resolveProviderCredential =
     options.resolveProviderCredential ?? defaultResolveProviderCredential;
   const key = await resolveProviderCredential(providerId);
-  const model = resolveModel(provider, message);
+  const model = resolveModel(provider, message, settings);
   const rawOutput = await provider.rewrite({
-    baseUrl: message?.baseUrl,
+    baseUrl: message?.baseUrl ?? settings.customBaseUrlByProvider[providerId],
     key,
     model,
     signal: options.signal,
@@ -178,11 +182,19 @@ export async function rewriteComposeDraft(message, options = {}) {
 
 export function createMessageRouter(options = {}) {
   return async function handleRuntimeMessage(message) {
-    if (message?.action !== 'rewrite') {
-      return undefined;
-    }
-
     try {
+      const optionsResult = await handleOptionsMessage(message, options);
+      if (optionsResult !== undefined) {
+        return {
+          ok: true,
+          result: optionsResult,
+        };
+      }
+
+      if (message?.action !== 'rewrite') {
+        return undefined;
+      }
+
       const result = await rewriteComposeDraft(message, options);
       return {
         ok: true,

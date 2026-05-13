@@ -1,0 +1,102 @@
+<!doctype html>
+<html lang="en">
+  <head>
+    <meta charset="utf-8" />
+    <meta
+      http-equiv="Content-Security-Policy"
+      content="default-src 'self'; connect-src 'none'; object-src 'none'; script-src 'self'; style-src 'self'"
+    />
+    <meta name="viewport" content="width=device-width, initial-scale=1" />
+    <title>ThunderClaude Options</title>
+    <link rel="stylesheet" href="options.css" />
+  </head>
+  <body>
+    <main class="options-shell">
+      <header class="page-header">
+        <div>
+          <h1>ThunderClaude Options</h1>
+          <p id="status" class="status" aria-live="polite">Loading settings...</p>
+        </div>
+      </header>
+
+      <section class="panel phrase-panel">
+        <div>
+          <h2>Storage phrase</h2>
+          <p>Unlock encrypted key storage for this browser session.</p>
+        </div>
+        <form id="phrase-form" class="inline-form">
+          <input
+            id="storage-phrase"
+            autocomplete="current-password"
+            placeholder="Storage phrase"
+            type="password"
+          />
+          <button id="unlock" type="submit">Unlock</button>
+          <button id="lock" type="button">Lock</button>
+        </form>
+      </section>
+
+      <section class="settings-layout">
+        <nav class="provider-nav" aria-label="Providers">
+          <div class="nav-heading">Providers</div>
+          <div id="provider-list" class="provider-list"></div>
+        </nav>
+
+        <form id="provider-form" class="panel provider-panel">
+          <div class="provider-heading">
+            <div>
+              <h2 id="provider-name">Provider</h2>
+              <p id="provider-host" class="muted"></p>
+            </div>
+            <a id="key-help" class="key-help" target="_blank" rel="noreferrer">Key help</a>
+          </div>
+
+          <label class="field">
+            <span>Default model</span>
+            <select id="default-model"></select>
+          </label>
+
+          <label id="custom-model-field" class="field" hidden>
+            <span>Custom model</span>
+            <input id="custom-model" autocomplete="off" />
+          </label>
+
+          <label id="base-url-field" class="field" hidden>
+            <span>Base URL</span>
+            <input id="base-url" autocomplete="off" placeholder="https://provider.example/v1" />
+          </label>
+
+          <fieldset class="storage-mode">
+            <legend>Key storage</legend>
+            <label>
+              <input name="key-mode" type="radio" value="encrypted" />
+              Encrypted
+            </label>
+            <label>
+              <input name="key-mode" type="radio" value="plain" />
+              Plaintext warning
+            </label>
+            <label>
+              <input name="key-mode" type="radio" value="none" />
+              No key
+            </label>
+          </fieldset>
+
+          <label class="field">
+            <span>API key</span>
+            <input id="api-key" autocomplete="off" placeholder="Leave blank to keep existing key" />
+          </label>
+
+          <p id="key-status" class="key-status"></p>
+          <p id="error" class="error" role="alert" hidden></p>
+
+          <div class="actions">
+            <button id="test-provider" type="button">Test connection</button>
+            <button id="save-provider" class="primary-action" type="submit">Save provider</button>
+          </div>
+        </form>
+      </section>
+    </main>
+    <script type="module" src="options.js"></script>
+  </body>
+</html>

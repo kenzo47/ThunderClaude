@@ -30,6 +30,10 @@
     "scripts": ["src/background/index.js"],
     "type": "module"
   },
+  "options_ui": {
+    "page": "src/options/options.html",
+    "open_in_tab": true
+  },
   "compose_action": {
     "default_title": "ThunderClaude",
     "default_icon": {

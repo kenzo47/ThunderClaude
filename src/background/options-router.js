@@ -1,0 +1,243 @@
+import './providers/anthropic.js';
+import './providers/deepseek.js';
+import './providers/gemini.js';
+import './providers/minimax.js';
+import './providers/ollama.js';
+import './providers/openai-compatible.js';
+import './providers/openai.js';
+import './providers/openrouter.js';
+
+import { getProvider, listProviders } from './providers/index.js';
+import { getSettings, setSettings, updateSettings } from './settings.js';
+import {
+  getEncryptedValue,
+  getPlainValue,
+  getStorageArea,
+  getStorageKeys,
+  removeValue,
+  setEncryptedValue,
+  setPlainValue,
+} from './secure-storage.js';
+import { getSessionKey, getSessionState, lockSession, unlockSession } from './session-key.js';
+
+const KEY_MODES = new Set(['encrypted', 'plain', 'none']);
+
+export class OptionsError extends Error {
+  constructor(message, { code = 'options_error' } = {}) {
+    super(message);
+    this.name = 'OptionsError';
+    this.code = code;
+  }
+}
+
+function serializeProvider(provider) {
+  return {
+    defaultModel: provider.defaultModel,
+    endpointHost: provider.endpointHost,
+    id: provider.id,
+    keyHelpUrl: provider.keyHelpUrl,
+    label: provider.label,
+    modelList: provider.modelList,
+  };
+}
+
+async function readStorageKey(storageArea, key) {
+  const result = await storageArea.get(key);
+  return result[key];
+}
+
+async function getKeyStatus(providerId, settings, storageArea) {
+  const keys = getStorageKeys(providerId);
+  const hasEncrypted = Boolean(await readStorageKey(storageArea, keys.encrypted));
+  const hasPlain = Boolean(await readStorageKey(storageArea, keys.plain));
+  const keyMode =
+    settings.keyModeByProvider[providerId] ??
+    (providerId === 'ollama' ? 'none' : hasPlain ? 'plain' : 'encrypted');
+
+  return {
+    hasKey: hasEncrypted || hasPlain,
+    keyMode,
+  };
+}
+
+async function resolveProviderKey(providerId, keyMode, apiKey, options = {}) {
+  if (providerId === 'ollama' || keyMode === 'none') {
+    return '';
+  }
+
+  if (apiKey?.trim()) {
+    return apiKey.trim();
+  }
+
+  if (keyMode === 'plain') {
+    const plainValue = await getPlainValue(providerId, options);
+    if (plainValue !== null) {
+      return plainValue;
+    }
+
+    throw new OptionsError('Provider API key is not configured.', {
+      code: 'missing_provider_key',
+    });
+  }
+
+  const sessionKey = getSessionKey();
+  const encryptedValue = await getEncryptedValue(providerId, sessionKey, options);
+  if (encryptedValue !== null) {
+    return encryptedValue;
+  }
+
+  throw new OptionsError('Provider API key is not configured.', {
+    code: 'missing_provider_key',
+  });
+}
+
+function getProviderConfig(settings, providerId, keyStatus) {
+  return {
+    customBaseUrl: settings.customBaseUrlByProvider[providerId] ?? '',
+    defaultModel:
+      settings.defaultModelByProvider[providerId] ?? getProvider(providerId).defaultModel,
+    hasKey: keyStatus.hasKey,
+    keyMode: keyStatus.keyMode,
+  };
+}
+
+export async function getOptionsSnapshot(options = {}) {
+  const storageArea = getStorageArea(options.storageArea);
+  const settings = await getSettings({ storageArea });
+  const providers = listProviders().map(serializeProvider);
+  const providerConfigs = {};
+
+  for (const provider of providers) {
+    const keyStatus = await getKeyStatus(provider.id, settings, storageArea);
+    providerConfigs[provider.id] = getProviderConfig(settings, provider.id, keyStatus);
+  }
+
+  return {
+    providerConfigs,
+    providers,
+    session: getSessionState(),
+    settings,
+  };
+}
+
+export async function unlockOptionsSession({ storagePhrase } = {}, options = {}) {
+  if (!storagePhrase?.trim()) {
+    throw new OptionsError('Enter a storage phrase.', {
+      code: 'missing_storage_phrase',
+    });
+  }
+
+  const settings = await getSettings(options);
+  const session = await unlockSession(storagePhrase, settings.keySalt);
+
+  if (!settings.keySalt) {
+    await setSettings(
+      {
+        ...settings,
+        keySalt: session.salt,
+      },
+      options
+    );
+  }
+
+  return getOptionsSnapshot(options);
+}
+
+export async function saveProviderOptions(
+  { apiKey = '', customBaseUrl = '', defaultModel, keyMode, providerId } = {},
+  options = {}
+) {
+  const provider = getProvider(providerId);
+  const normalizedKeyMode = keyMode ?? (providerId === 'ollama' ? 'none' : 'encrypted');
+
+  if (!KEY_MODES.has(normalizedKeyMode)) {
+    throw new OptionsError('Choose a valid key storage mode.', {
+      code: 'invalid_key_mode',
+    });
+  }
+
+  const storageArea = getStorageArea(options.storageArea);
+  const trimmedApiKey = apiKey.trim();
+
+  if (trimmedApiKey || normalizedKeyMode === 'none') {
+    await removeValue(providerId, { storageArea });
+  }
+
+  if (trimmedApiKey && normalizedKeyMode === 'encrypted') {
+    await setEncryptedValue(providerId, trimmedApiKey, getSessionKey(), { storageArea });
+  }
+
+  if (trimmedApiKey && normalizedKeyMode === 'plain') {
+    await setPlainValue(providerId, trimmedApiKey, { storageArea });
+  }
+
+  await updateSettings(
+    (settings) => {
+      const storedKeyMode =
+        trimmedApiKey || normalizedKeyMode === 'none'
+          ? normalizedKeyMode
+          : (settings.keyModeByProvider[providerId] ?? normalizedKeyMode);
+
+      return {
+        ...settings,
+        customBaseUrlByProvider: {
+          ...settings.customBaseUrlByProvider,
+          [providerId]: providerId === 'openai-compatible' ? customBaseUrl.trim() : '',
+        },
+        defaultModelByProvider: {
+          ...settings.defaultModelByProvider,
+          [providerId]: defaultModel?.trim() || provider.defaultModel,
+        },
+        defaultProviderId: providerId,
+        keyModeByProvider: {
+          ...settings.keyModeByProvider,
+          [providerId]: storedKeyMode,
+        },
+      };
+    },
+    { storageArea }
+  );
+
+  return getOptionsSnapshot({ storageArea });
+}
+
+export async function testProviderOptions(
+  { apiKey = '', customBaseUrl = '', defaultModel, keyMode, providerId } = {},
+  options = {}
+) {
+  const provider = getProvider(providerId);
+  const resolvedKeyMode = keyMode ?? (providerId === 'ollama' ? 'none' : 'encrypted');
+  const key = await resolveProviderKey(providerId, resolvedKeyMode, apiKey, options);
+
+  return {
+    connected: await provider.testConnection(key, {
+      baseUrl: customBaseUrl?.trim(),
+      model: defaultModel?.trim() || provider.defaultModel,
+    }),
+  };
+}
+
+export async function handleOptionsMessage(message, options = {}) {
+  if (message?.action === 'options:getSnapshot') {
+    return getOptionsSnapshot(options);
+  }
+
+  if (message?.action === 'options:unlock') {
+    return unlockOptionsSession(message, options);
+  }
+
+  if (message?.action === 'options:lock') {
+    lockSession();
+    return getOptionsSnapshot(options);
+  }
+
+  if (message?.action === 'options:saveProvider') {
+    return saveProviderOptions(message, options);
+  }
+
+  if (message?.action === 'options:testProvider') {
+    return testProviderOptions(message, options);
+  }
+
+  return undefined;
+}

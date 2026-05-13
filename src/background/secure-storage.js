@@ -5,7 +5,7 @@ const PLAIN_PREFIX = 'thunderclaude.plain.';
 const PLAIN_MARKER = 'plain-v1:';
 const OBFUSCATION_KEY = 'ThunderClaude local plaintext storage warning';
 
-function getStorageArea(storageArea) {
+export function getStorageArea(storageArea) {
   const resolvedArea =
     storageArea ?? globalThis.messenger?.storage?.local ?? globalThis.browser?.storage?.local;
 

@@ -32,6 +32,16 @@ function createProvider(output, calls = []) {
   };
 }
 
+function getTestSettings() {
+  return {
+    customBaseUrlByProvider: {},
+    defaultModelByProvider: {},
+    defaultProviderId: 'test-provider',
+    keyModeByProvider: {},
+    passphraseSalt: null,
+  };
+}
+
 describe('rewrite orchestrator', () => {
   it('rewrites, sanitizes, restores inline media, and updates compose details', async () => {
     const providerCalls = [];
@@ -51,6 +61,7 @@ describe('rewrite orchestrator', () => {
           tabId: 42,
         },
         {
+          getSettingsImpl: async () => getTestSettings(),
           getProviderImpl: () => provider,
           resolveProviderCredential: async () => 'stored-provider-key',
           thunderbird,
@@ -94,6 +105,7 @@ describe('rewrite orchestrator', () => {
         tabId: 7,
       },
       {
+        getSettingsImpl: async () => getTestSettings(),
         getProviderImpl: () => provider,
         resolveProviderCredential: async () => 'stored-provider-key',
         thunderbird,
@@ -117,6 +129,7 @@ describe('rewrite orchestrator', () => {
           tabId: 42,
         },
         {
+          getSettingsImpl: async () => getTestSettings(),
           getProviderImpl: () => provider,
           resolveProviderCredential: async () => 'stored-provider-key',
           thunderbird,
@@ -140,6 +153,7 @@ describe('rewrite orchestrator', () => {
           tabId: 42,
         },
         {
+          getSettingsImpl: async () => getTestSettings(),
           getProviderImpl: () => provider,
           resolveProviderCredential: async () => 'stored-provider-key',
           thunderbird,
@@ -156,6 +170,7 @@ describe('runtime message router', () => {
     const thunderbird = createThunderbird('<p>Hello</p>');
     const provider = createProvider('<p>Rewritten</p>');
     const router = createMessageRouter({
+      getSettingsImpl: async () => getTestSettings(),
       getProviderImpl: () => provider,
       resolveProviderCredential: async () => 'stored-provider-key',
       thunderbird,

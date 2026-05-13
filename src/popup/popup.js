@@ -1,54 +1,17 @@
 const thunderbird = globalThis.messenger ?? globalThis.browser;
 
-const PROVIDERS = [
+const FALLBACK_PROVIDERS = [
   {
     defaultModel: 'claude-opus-4-7',
     id: 'anthropic',
     label: 'Anthropic',
-    models: ['claude-opus-4-7', 'claude-sonnet-4-6', 'claude-haiku-4-5'],
+    modelList: ['claude-opus-4-7', 'claude-sonnet-4-6', 'claude-haiku-4-5'],
   },
   {
     defaultModel: 'gpt-5.4',
     id: 'openai',
     label: 'OpenAI',
-    models: ['gpt-5.5', 'gpt-5.4', 'gpt-5.4-mini', 'gpt-4.1-nano'],
-  },
-  {
-    defaultModel: 'gemini-2.5-pro',
-    id: 'gemini',
-    label: 'Google Gemini',
-    models: ['gemini-2.5-pro', 'gemini-2.5-flash', 'gemini-2.0-flash'],
-  },
-  {
-    defaultModel: 'MiniMax-M2',
-    id: 'minimax',
-    label: 'MiniMax',
-    models: ['MiniMax-M2', 'MiniMax-M2-Pro', 'MiniMax-M2-Reasoning'],
-  },
-  {
-    defaultModel: 'deepseek-v4-flash',
-    id: 'deepseek',
-    label: 'DeepSeek',
-    models: ['deepseek-v4-flash', 'deepseek-v4-pro', 'deepseek-chat', 'deepseek-reasoner'],
-  },
-  {
-    defaultModel: 'openai/gpt-5.4',
-    id: 'openrouter',
-    label: 'OpenRouter',
-    models: ['openai/gpt-5.4', 'anthropic/claude-opus-4.7', 'google/gemini-2.5-pro', 'custom'],
-  },
-  {
-    defaultModel: 'llama3.2',
-    id: 'ollama',
-    label: 'Ollama',
-    models: ['llama3.2', 'gemma3', 'qwen3', 'mistral', 'custom'],
-  },
-  {
-    defaultModel: 'custom',
-    id: 'openai-compatible',
-    label: 'OpenAI-Compatible',
-    models: ['custom'],
-    needsBaseUrl: true,
+    modelList: ['gpt-5.5', 'gpt-5.4', 'gpt-5.4-mini', 'gpt-4.1-nano'],
   },
 ];
 
@@ -67,6 +30,8 @@ const customPrompt = document.querySelector('#custom-prompt');
 const presetButtons = [...document.querySelectorAll('[data-preset]')];
 
 let activeTabId = null;
+let optionsSnapshot = null;
+let providers = FALLBACK_PROVIDERS;
 let selectedPreset = 'make-formal';
 
 function setError(message) {
@@ -99,22 +64,59 @@ function createOption(value, label = value) {
   return option;
 }
 
+async function sendMessage(message) {
+  const response = await thunderbird.runtime.sendMessage(message);
+
+  if (!response?.ok) {
+    throw new Error(response?.error?.message ?? 'ThunderClaude request failed.');
+  }
+
+  return response.result;
+}
+
+async function loadOptionsSnapshot() {
+  try {
+    optionsSnapshot = await sendMessage({
+      action: 'options:getSnapshot',
+    });
+    providers = optionsSnapshot.providers;
+  } catch (error) {
+    console.warn('ThunderClaude popup could not load defaults.', error);
+  }
+}
+
 function renderProviders() {
   providerSelect.replaceChildren(
-    ...PROVIDERS.map((provider) => createOption(provider.id, provider.label))
+    ...providers.map((provider) => createOption(provider.id, provider.label))
   );
+
+  if (optionsSnapshot?.settings?.defaultProviderId) {
+    providerSelect.value = optionsSnapshot.settings.defaultProviderId;
+  }
 }
 
 function getSelectedProvider() {
-  return PROVIDERS.find((provider) => provider.id === providerSelect.value) ?? PROVIDERS[0];
+  return providers.find((provider) => provider.id === providerSelect.value) ?? providers[0];
+}
+
+function isOpenAiCompatible(provider) {
+  return provider.id === 'openai-compatible';
 }
 
 function renderModels() {
   const provider = getSelectedProvider();
-  modelSelect.replaceChildren(...provider.models.map((model) => createOption(model)));
-  modelSelect.value = provider.defaultModel;
+  const configuredModel =
+    optionsSnapshot?.settings?.defaultModelByProvider?.[provider.id] ?? provider.defaultModel;
+  const modelList = provider.modelList.includes(configuredModel)
+    ? provider.modelList
+    : [...provider.modelList, 'custom'];
+
+  modelSelect.replaceChildren(...modelList.map((model) => createOption(model)));
+  modelSelect.value = modelList.includes(configuredModel) ? configuredModel : 'custom';
+  customModelInput.value = modelSelect.value === 'custom' ? configuredModel : '';
   customModelField.hidden = modelSelect.value !== 'custom';
-  baseUrlField.hidden = !provider.needsBaseUrl;
+  baseUrlField.hidden = !isOpenAiCompatible(provider);
+  baseUrlInput.value = optionsSnapshot?.settings?.customBaseUrlByProvider?.[provider.id] ?? '';
 }
 
 function selectPreset(button) {
@@ -138,13 +140,13 @@ function currentPayload() {
     throw new Error('Enter a custom model.');
   }
 
-  if (provider.needsBaseUrl && !baseUrl) {
+  if (isOpenAiCompatible(provider) && !baseUrl) {
     throw new Error('Enter a base URL.');
   }
 
   return {
     action: 'rewrite',
-    baseUrl: provider.needsBaseUrl ? baseUrl : undefined,
+    baseUrl: isOpenAiCompatible(provider) ? baseUrl : undefined,
     customModel: modelId === 'custom' ? customModel : undefined,
     customPrompt: custom,
     modelId,
@@ -174,15 +176,12 @@ async function submitRewrite() {
   setControlsDisabled(true);
   status.textContent = 'Rewriting draft...';
 
-  const response = await thunderbird.runtime.sendMessage(currentPayload());
-
-  if (!response?.ok) {
-    throw new Error(response?.error?.message ?? 'Rewrite failed.');
-  }
+  await sendMessage(currentPayload());
 
   status.textContent = 'Draft rewritten.';
 }
 
+await loadOptionsSnapshot();
 renderProviders();
 renderModels();
 
