@@ -18,6 +18,7 @@
   },
   "permissions": ["compose", "storage"],
   "host_permissions": [
+    "http://localhost:11434/*",
     "https://api.anthropic.com/*",
     "https://api.deepseek.com/*",
     "https://api.minimax.io/*",

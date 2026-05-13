@@ -31,9 +31,12 @@ export async function parseProviderJson(response) {
 }
 
 export function normalizeProviderError(status, body) {
+  const error = body?.error;
   const message =
-    body?.error?.message ?? body?.message ?? `Provider request failed with ${status}.`;
-  const type = body?.error?.type ?? body?.type;
+    (typeof error === 'string' ? error : error?.message) ??
+    body?.message ??
+    `Provider request failed with ${status}.`;
+  const type = typeof error === 'string' ? body?.type : (error?.type ?? body?.type);
 
   if (status === 401) {
     return new ProviderError(message, { code: 'authentication_error', status });

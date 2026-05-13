@@ -1,105 +1,104 @@
-import { expect, it } from 'vitest';
+import { describe, expect, it } from 'vitest';
 
-export function jsonResponse(body, { ok = true, status = 200 } = {}) {
-  return {
-    ok,
-    status,
-    async json() {
-      return body;
-    },
-  };
-}
+import ollamaProvider from '../../src/background/providers/ollama.js';
+import { jsonResponse, providerError } from './chat-provider-test-helper.js';
 
-export function successfulChatResponse(text = '<p>Rewritten draft.</p>') {
+function successfulOllamaResponse(text = '<p>Rewritten draft.</p>') {
   return jsonResponse({
-    choices: [
-      {
-        message: {
-          content: text,
-          role: 'assistant',
-        },
-      },
-    ],
+    done: true,
+    message: {
+      content: text,
+      role: 'assistant',
+    },
+    model: 'llama3.2',
   });
 }
 
-export function providerError(status, message, type) {
-  return jsonResponse(
-    {
-      error: {
-        message,
-        type,
-      },
-    },
-    { ok: false, status }
-  );
-}
+describe('ollama provider', () => {
+  it('matches the provider contract', () => {
+    expect(ollamaProvider).toMatchObject({
+      defaultModel: 'llama3.2',
+      endpointHost: 'localhost',
+      id: 'ollama',
+      keyHelpUrl: 'https://ollama.com/download',
+      label: 'Ollama',
+      modelList: ['llama3.2', 'gemma3', 'qwen3', 'mistral', 'custom'],
+    });
+  });
 
-export function defineChatProviderBehaviorTests({
-  expectedHeaders = {
-    authorization: 'Bearer sk-test-fake-key-do-not-use',
-    'content-type': 'application/json',
-  },
-  provider,
-  request,
-  rewriteOptions = {},
-  testConnectionOptions = {},
-}) {
-  it('rewrites successfully through chat completions', async () => {
+  it('rewrites successfully through the local chat endpoint', async () => {
     const calls = [];
     const fetchImpl = async (url, options) => {
       calls.push({ options, url });
-      return successfulChatResponse();
+      return successfulOllamaResponse();
     };
 
     await expect(
-      provider.rewrite({
+      ollamaProvider.rewrite({
         fetchImpl,
-        key: 'sk-test-fake-key-do-not-use',
-        model: request.model,
+        model: 'llama3.2',
         system: 'Rewrite email.',
         user: '<p>Hello.</p>',
-        ...rewriteOptions,
       })
     ).resolves.toBe('<p>Rewritten draft.</p>');
 
     expect(calls).toHaveLength(1);
-    expect(calls[0].url).toBe(request.url);
+    expect(calls[0].url).toBe('http://localhost:11434/api/chat');
     expect(calls[0].options).toMatchObject({
       credentials: 'omit',
-      headers: expectedHeaders,
+      headers: {
+        'content-type': 'application/json',
+      },
       method: 'POST',
       referrerPolicy: 'no-referrer',
     });
-    expect(JSON.parse(calls[0].options.body)).toEqual(request.body);
+    expect(JSON.parse(calls[0].options.body)).toEqual({
+      messages: [
+        {
+          content: 'Rewrite email.',
+          role: 'system',
+        },
+        {
+          content: '<p>Hello.</p>',
+          role: 'user',
+        },
+      ],
+      model: 'llama3.2',
+      stream: false,
+      think: false,
+    });
   });
 
-  it('returns true for a successful test connection', async () => {
+  it('returns true for a successful test connection without an API key', async () => {
     await expect(
-      provider.testConnection('sk-test-fake-key-do-not-use', {
-        fetchImpl: async () => successfulChatResponse('OK'),
-        ...testConnectionOptions,
+      ollamaProvider.testConnection('', {
+        fetchImpl: async () => successfulOllamaResponse('OK'),
       })
     ).resolves.toBe(true);
   });
 
+  it('returns false when an API key is supplied', async () => {
+    await expect(
+      ollamaProvider.testConnection('sk-test-fake-key-do-not-use', {
+        fetchImpl: async () => successfulOllamaResponse('OK'),
+      })
+    ).resolves.toBe(false);
+  });
+
   it('returns false for a failed test connection', async () => {
     await expect(
-      provider.testConnection('sk-test-fake-key-do-not-use', {
-        fetchImpl: async () => providerError(401, 'invalid api key', 'authentication_error'),
-        ...testConnectionOptions,
+      ollamaProvider.testConnection('', {
+        fetchImpl: async () => providerError(500, 'ollama unavailable', 'server_error'),
       })
     ).resolves.toBe(false);
   });
 
   it('maps 401 responses to authentication errors', async () => {
     await expect(
-      provider.rewrite({
+      ollamaProvider.rewrite({
         fetchImpl: async () => providerError(401, 'invalid api key', 'authentication_error'),
-        key: 'sk-test-fake-key-do-not-use',
         system: 'Rewrite email.',
         user: '<p>Hello.</p>',
-        ...rewriteOptions,
       })
     ).rejects.toMatchObject({
       code: 'authentication_error',
@@ -109,12 +108,10 @@ export function defineChatProviderBehaviorTests({
 
   it('maps 429 responses to rate-limit errors', async () => {
     await expect(
-      provider.rewrite({
+      ollamaProvider.rewrite({
         fetchImpl: async () => providerError(429, 'rate limited', 'rate_limit_error'),
-        key: 'sk-test-fake-key-do-not-use',
         system: 'Rewrite email.',
         user: '<p>Hello.</p>',
-        ...rewriteOptions,
       })
     ).rejects.toMatchObject({
       code: 'rate_limit_error',
@@ -124,12 +121,10 @@ export function defineChatProviderBehaviorTests({
 
   it('maps 5xx responses to server errors', async () => {
     await expect(
-      provider.rewrite({
+      ollamaProvider.rewrite({
         fetchImpl: async () => providerError(500, 'server failed', 'server_error'),
-        key: 'sk-test-fake-key-do-not-use',
         system: 'Rewrite email.',
         user: '<p>Hello.</p>',
-        ...rewriteOptions,
       })
     ).rejects.toMatchObject({
       code: 'server_error',
@@ -145,12 +140,10 @@ export function defineChatProviderBehaviorTests({
     };
 
     await expect(
-      provider.rewrite({
+      ollamaProvider.rewrite({
         fetchImpl,
-        key: 'sk-test-fake-key-do-not-use',
         system: 'Rewrite email.',
         user: '<p>Hello.</p>',
-        ...rewriteOptions,
       })
     ).rejects.toMatchObject({
       code: 'network_timeout',
@@ -159,7 +152,7 @@ export function defineChatProviderBehaviorTests({
 
   it('rejects malformed JSON responses', async () => {
     await expect(
-      provider.rewrite({
+      ollamaProvider.rewrite({
         fetchImpl: async () => ({
           ok: true,
           status: 200,
@@ -167,14 +160,24 @@ export function defineChatProviderBehaviorTests({
             throw new SyntaxError('bad json');
           },
         }),
-        key: 'sk-test-fake-key-do-not-use',
         system: 'Rewrite email.',
         user: '<p>Hello.</p>',
-        ...rewriteOptions,
       })
     ).rejects.toMatchObject({
       code: 'malformed_json',
       status: 200,
     });
   });
-}
+
+  it('rejects responses without assistant text', async () => {
+    await expect(
+      ollamaProvider.rewrite({
+        fetchImpl: async () => jsonResponse({ done: true, message: { role: 'assistant' } }),
+        system: 'Rewrite email.',
+        user: '<p>Hello.</p>',
+      })
+    ).rejects.toMatchObject({
+      code: 'empty_response',
+    });
+  });
+});
