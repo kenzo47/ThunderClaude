@@ -99,6 +99,27 @@ export function extractTextBlocks(body) {
   return text;
 }
 
+export function extractChatCompletionText(body) {
+  if (!Array.isArray(body?.choices)) {
+    throw new ProviderError('Provider response did not include choices.', {
+      code: 'malformed_response',
+    });
+  }
+
+  const text = body.choices
+    .map((choice) => choice?.message?.content ?? choice?.text)
+    .filter((content) => typeof content === 'string')
+    .join('');
+
+  if (!text) {
+    throw new ProviderError('Provider response did not include text content.', {
+      code: 'empty_response',
+    });
+  }
+
+  return text;
+}
+
 export const providers = new Map();
 
 export function registerProvider(provider) {

@@ -19,8 +19,11 @@
   "permissions": ["compose", "storage"],
   "host_permissions": [
     "https://api.anthropic.com/*",
+    "https://api.deepseek.com/*",
+    "https://api.minimax.io/*",
     "https://api.openai.com/*",
-    "https://generativelanguage.googleapis.com/*"
+    "https://generativelanguage.googleapis.com/*",
+    "https://openrouter.ai/*"
   ],
   "background": {
     "scripts": ["src/background/index.js"],
