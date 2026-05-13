@@ -46,12 +46,18 @@ describe('options router', () => {
     expect(snapshot.providers.map((provider) => provider.id)).toContain('anthropic');
     expect(snapshot.providers.map((provider) => provider.id)).toContain('openai-compatible');
     expect(snapshot.settings.defaultProviderId).toBe('anthropic');
+    expect(snapshot.settings.enabledLocalProviderIds).toEqual({});
     expect(snapshot.settings.onboardingComplete).toBe(false);
     expect(snapshot.session.locked).toBe(true);
     expect(snapshot.providerConfigs.anthropic).toMatchObject({
       defaultModel: 'claude-opus-4-7',
       hasKey: false,
       keyMode: 'encrypted',
+    });
+    expect(snapshot.providerConfigs.ollama).toMatchObject({
+      hasKey: false,
+      keyMode: 'none',
+      localAccessEnabled: false,
     });
   });
 
@@ -173,11 +179,58 @@ describe('options router', () => {
     });
   });
 
+  it('requires explicit local access before testing Ollama', async () => {
+    await expect(
+      testProviderOptions(
+        {
+          defaultModel: 'llama3.2',
+          providerId: 'ollama',
+        },
+        { storageArea }
+      )
+    ).rejects.toMatchObject({
+      code: 'local_provider_not_enabled',
+    });
+  });
+
+  it('saves explicit local access for Ollama', async () => {
+    const snapshot = await saveProviderOptions(
+      {
+        defaultModel: 'llama3.2',
+        keyMode: 'none',
+        localAccessEnabled: true,
+        providerId: 'ollama',
+      },
+      { storageArea }
+    );
+
+    expect(snapshot.settings.enabledLocalProviderIds).toMatchObject({
+      ollama: true,
+    });
+    expect(snapshot.providerConfigs.ollama).toMatchObject({
+      keyMode: 'none',
+      localAccessEnabled: true,
+    });
+  });
+
   it('marks onboarding complete for a verified provider', async () => {
+    await saveProviderOptions(
+      {
+        defaultModel: 'llama3.2',
+        keyMode: 'none',
+        localAccessEnabled: true,
+        providerId: 'ollama',
+      },
+      { storageArea }
+    );
+
     const settings = await completeOnboarding({ providerId: 'ollama' }, { storageArea });
 
     expect(settings).toMatchObject({
       defaultProviderId: 'ollama',
+      enabledLocalProviderIds: {
+        ollama: true,
+      },
       onboardingComplete: true,
       verifiedProviderIds: {
         ollama: true,

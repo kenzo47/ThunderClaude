@@ -14,6 +14,8 @@ const customModelField = document.querySelector('#custom-model-field');
 const customModel = document.querySelector('#custom-model');
 const baseUrlField = document.querySelector('#base-url-field');
 const baseUrl = document.querySelector('#base-url');
+const localAccessField = document.querySelector('#local-access-field');
+const localAccess = document.querySelector('#local-access');
 const apiKey = document.querySelector('#api-key');
 const keyStatus = document.querySelector('#key-status');
 const errorMessage = document.querySelector('#error');
@@ -98,6 +100,8 @@ function renderProviderForm() {
   customModelField.hidden = visibleModel !== 'custom';
   baseUrlField.hidden = provider.id !== 'openai-compatible';
   baseUrl.value = config.customBaseUrl;
+  localAccessField.hidden = provider.id !== 'ollama';
+  localAccess.checked = Boolean(config.localAccessEnabled);
   apiKey.value = '';
 
   for (const radio of keyModeInputs) {
@@ -135,6 +139,7 @@ function providerPayload() {
     customBaseUrl: provider.id === 'openai-compatible' ? baseUrl.value.trim() : '',
     defaultModel: model,
     keyMode: provider.id === 'ollama' ? 'none' : selectedKeyMode(),
+    localAccessEnabled: provider.id === 'ollama' ? localAccess.checked : false,
     providerId: provider.id,
   };
 }

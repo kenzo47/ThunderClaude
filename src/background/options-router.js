@@ -21,6 +21,7 @@ import {
 import { getSessionKey, getSessionState, lockSession, unlockSession } from './session-key.js';
 
 const KEY_MODES = new Set(['encrypted', 'plain', 'none']);
+const LOCAL_PROVIDER_IDS = new Set(['ollama']);
 
 export class OptionsError extends Error {
   constructor(message, { code = 'options_error' } = {}) {
@@ -98,7 +99,22 @@ function getProviderConfig(settings, providerId, keyStatus) {
       settings.defaultModelByProvider[providerId] ?? getProvider(providerId).defaultModel,
     hasKey: keyStatus.hasKey,
     keyMode: keyStatus.keyMode,
+    localAccessEnabled: Boolean(settings.enabledLocalProviderIds[providerId]),
   };
+}
+
+function assertLocalProviderEnabled(providerId, settings, localAccessEnabled) {
+  if (!LOCAL_PROVIDER_IDS.has(providerId)) {
+    return;
+  }
+
+  if (localAccessEnabled || settings.enabledLocalProviderIds[providerId]) {
+    return;
+  }
+
+  throw new OptionsError('Enable local Ollama access before connecting to localhost.', {
+    code: 'local_provider_not_enabled',
+  });
 }
 
 export async function getOptionsSnapshot(options = {}) {
@@ -144,7 +160,14 @@ export async function unlockOptionsSession({ storagePhrase } = {}, options = {})
 }
 
 export async function saveProviderOptions(
-  { apiKey = '', customBaseUrl = '', defaultModel, keyMode, providerId } = {},
+  {
+    apiKey = '',
+    customBaseUrl = '',
+    defaultModel,
+    keyMode,
+    localAccessEnabled = false,
+    providerId,
+  } = {},
   options = {}
 ) {
   const provider = getProvider(providerId);
@@ -158,6 +181,8 @@ export async function saveProviderOptions(
 
   const storageArea = getStorageArea(options.storageArea);
   const trimmedApiKey = apiKey.trim();
+  const currentSettings = await getSettings({ storageArea });
+  assertLocalProviderEnabled(providerId, currentSettings, localAccessEnabled);
 
   if (trimmedApiKey || normalizedKeyMode === 'none') {
     await removeValue(providerId, { storageArea });
@@ -189,6 +214,10 @@ export async function saveProviderOptions(
           [providerId]: defaultModel?.trim() || provider.defaultModel,
         },
         defaultProviderId: providerId,
+        enabledLocalProviderIds: {
+          ...settings.enabledLocalProviderIds,
+          [providerId]: LOCAL_PROVIDER_IDS.has(providerId) ? Boolean(localAccessEnabled) : false,
+        },
         keyModeByProvider: {
           ...settings.keyModeByProvider,
           [providerId]: storedKeyMode,
@@ -202,11 +231,20 @@ export async function saveProviderOptions(
 }
 
 export async function testProviderOptions(
-  { apiKey = '', customBaseUrl = '', defaultModel, keyMode, providerId } = {},
+  {
+    apiKey = '',
+    customBaseUrl = '',
+    defaultModel,
+    keyMode,
+    localAccessEnabled = false,
+    providerId,
+  } = {},
   options = {}
 ) {
   const provider = getProvider(providerId);
   const resolvedKeyMode = keyMode ?? (providerId === 'ollama' ? 'none' : 'encrypted');
+  const settings = await getSettings(options);
+  assertLocalProviderEnabled(providerId, settings, localAccessEnabled);
   const key = await resolveProviderKey(providerId, resolvedKeyMode, apiKey, options);
 
   return {
@@ -219,6 +257,8 @@ export async function testProviderOptions(
 
 export async function completeOnboarding({ providerId } = {}, options = {}) {
   getProvider(providerId);
+  const settings = await getSettings(options);
+  assertLocalProviderEnabled(providerId, settings, false);
 
   return updateSettings(
     (settings) => ({

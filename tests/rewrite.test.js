@@ -37,6 +37,7 @@ function getTestSettings() {
     customBaseUrlByProvider: {},
     defaultModelByProvider: {},
     defaultProviderId: 'test-provider',
+    enabledLocalProviderIds: {},
     keyModeByProvider: {},
     keySalt: null,
     onboardingComplete: true,
@@ -355,6 +356,34 @@ describe('rewrite orchestrator', () => {
     ).rejects.toMatchObject({
       code: 'onboarding_required',
     });
+  });
+
+  it('requires explicit local access before rewriting with Ollama', async () => {
+    const thunderbird = createThunderbird('<p>Hello</p>');
+    const provider = createProvider('<p>Unused</p>');
+
+    await expect(
+      rewriteComposeDraft(
+        {
+          action: 'rewrite',
+          preset: 'shorten',
+          providerId: 'ollama',
+          tabId: 42,
+        },
+        {
+          getSettingsImpl: async () => ({
+            ...getTestSettings(),
+            defaultProviderId: 'ollama',
+          }),
+          getProviderImpl: () => provider,
+          resolveProviderCredential: async () => '',
+          thunderbird,
+        }
+      )
+    ).rejects.toMatchObject({
+      code: 'local_provider_not_enabled',
+    });
+    expect(thunderbird.setCalls).toEqual([]);
   });
 });
 

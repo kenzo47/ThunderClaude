@@ -28,6 +28,7 @@ const PRESETS = {
   expand: 'Expand the email with clear, useful detail while preserving the original intent.',
   'fix-grammar': 'Fix grammar, spelling, and clarity while preserving the original meaning.',
 };
+const LOCAL_PROVIDER_IDS = new Set(['ollama']);
 
 export class RewriteError extends Error {
   constructor(message, { code = 'rewrite_error' } = {}) {
@@ -266,6 +267,11 @@ export async function rewriteComposeDraft(message, options = {}) {
   if (!providerId) {
     throw new RewriteError('A provider is required.', {
       code: 'missing_provider',
+    });
+  }
+  if (LOCAL_PROVIDER_IDS.has(providerId) && !settings.enabledLocalProviderIds?.[providerId]) {
+    throw new RewriteError('Enable local Ollama access before rewriting with localhost.', {
+      code: 'local_provider_not_enabled',
     });
   }
 

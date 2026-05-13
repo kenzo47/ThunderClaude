@@ -182,6 +182,26 @@ button:focus-visible {
   width: auto;
 }
 
+.checkbox-field {
+  align-items: center;
+  background: var(--warning-soft);
+  border: 1px solid oklch(0.78 0.08 72);
+  border-radius: 7px;
+  color: var(--warning);
+  display: flex;
+  font-size: 13px;
+  font-weight: 700;
+  gap: 8px;
+  line-height: 1.35;
+  padding: 9px 10px;
+}
+
+.checkbox-field input {
+  flex: 0 0 auto;
+  height: 16px;
+  width: 16px;
+}
+
 .step-actions {
   display: flex;
   gap: 10px;

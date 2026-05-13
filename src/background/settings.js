@@ -4,6 +4,7 @@ export const DEFAULT_SETTINGS = Object.freeze({
   customBaseUrlByProvider: {},
   defaultModelByProvider: {},
   defaultProviderId: 'anthropic',
+  enabledLocalProviderIds: {},
   keyModeByProvider: {},
   keySalt: null,
   onboardingComplete: false,
@@ -32,6 +33,10 @@ function normalizeSettings(settings = {}) {
       ...(settings.defaultModelByProvider ?? {}),
     },
     defaultProviderId: settings.defaultProviderId ?? DEFAULT_SETTINGS.defaultProviderId,
+    enabledLocalProviderIds: {
+      ...DEFAULT_SETTINGS.enabledLocalProviderIds,
+      ...(settings.enabledLocalProviderIds ?? {}),
+    },
     keyModeByProvider: {
       ...DEFAULT_SETTINGS.keyModeByProvider,
       ...(settings.keyModeByProvider ?? {}),
