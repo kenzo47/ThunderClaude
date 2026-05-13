@@ -62,9 +62,9 @@ export async function fetchProviderJson(url, { endpointHost, fetchImpl = fetch, 
   let response;
   try {
     response = await fetchImpl(url, {
+      ...options,
       credentials: 'omit',
       referrerPolicy: 'no-referrer',
-      ...options,
     });
   } catch (error) {
     throw new ProviderError(error?.message ?? 'Provider request failed.', {
