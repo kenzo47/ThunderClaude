@@ -1,0 +1,253 @@
+:root {
+  color-scheme: light;
+  --surface: oklch(0.982 0.006 235);
+  --panel: oklch(0.996 0.004 235);
+  --panel-muted: oklch(0.955 0.01 235);
+  --text: oklch(0.23 0.025 245);
+  --muted: oklch(0.5 0.024 245);
+  --line: oklch(0.84 0.016 235);
+  --accent: oklch(0.48 0.15 252);
+  --accent-strong: oklch(0.405 0.16 252);
+  --accent-soft: oklch(0.94 0.04 252);
+  --danger: oklch(0.45 0.16 28);
+  --danger-soft: oklch(0.945 0.038 28);
+  --warning: oklch(0.45 0.12 72);
+  --warning-soft: oklch(0.95 0.05 72);
+  font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', system-ui, sans-serif;
+}
+
+* {
+  box-sizing: border-box;
+}
+
+body {
+  background: var(--surface);
+  color: var(--text);
+  margin: 0;
+}
+
+button,
+input,
+select {
+  color: inherit;
+  font: inherit;
+}
+
+.wizard-shell {
+  display: grid;
+  gap: 18px;
+  margin: 0 auto;
+  max-width: 760px;
+  padding: 32px 22px;
+}
+
+.wizard-header {
+  display: grid;
+  gap: 8px;
+}
+
+.eyebrow {
+  color: var(--accent-strong);
+  font-size: 12px;
+  font-weight: 800;
+  letter-spacing: 0;
+  margin: 0;
+}
+
+h1,
+h2,
+p {
+  margin: 0;
+}
+
+h1 {
+  font-size: 30px;
+  letter-spacing: 0;
+  line-height: 1.1;
+  max-width: 680px;
+}
+
+h2 {
+  font-size: 18px;
+  letter-spacing: 0;
+  line-height: 1.25;
+}
+
+.status,
+.panel p,
+.step-heading p {
+  color: var(--muted);
+  font-size: 14px;
+  line-height: 1.45;
+}
+
+.panel {
+  background: var(--panel);
+  border: 1px solid var(--line);
+  border-radius: 8px;
+  display: grid;
+  gap: 16px;
+  padding: 18px;
+}
+
+.step-heading {
+  display: grid;
+  gap: 5px;
+}
+
+.provider-grid {
+  display: grid;
+  gap: 10px;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+}
+
+.provider-card {
+  background: var(--panel);
+  border: 1px solid var(--line);
+  border-radius: 8px;
+  cursor: pointer;
+  display: grid;
+  gap: 5px;
+  min-height: 76px;
+  padding: 12px;
+  text-align: left;
+}
+
+.provider-card:hover {
+  background: var(--panel-muted);
+}
+
+.provider-card.is-selected {
+  background: var(--accent-soft);
+  border-color: var(--accent);
+  color: var(--accent-strong);
+}
+
+.provider-card strong {
+  font-size: 14px;
+}
+
+.provider-card span {
+  color: var(--muted);
+  font-size: 12px;
+}
+
+.field {
+  display: grid;
+  gap: 6px;
+}
+
+.field span,
+legend {
+  color: var(--muted);
+  font-size: 12px;
+  font-weight: 750;
+}
+
+input,
+select {
+  background: oklch(0.998 0.003 235);
+  border: 1px solid var(--line);
+  border-radius: 7px;
+  height: 38px;
+  outline: none;
+  padding: 0 10px;
+  width: 100%;
+}
+
+input:focus,
+select:focus,
+button:focus-visible {
+  border-color: var(--accent);
+  box-shadow: 0 0 0 3px oklch(0.82 0.08 252 / 0.34);
+}
+
+.storage-mode {
+  border: 0;
+  display: flex;
+  gap: 14px;
+  margin: 0;
+  padding: 0;
+}
+
+.storage-mode label {
+  align-items: center;
+  display: inline-flex;
+  font-size: 13px;
+  gap: 6px;
+}
+
+.storage-mode input {
+  height: auto;
+  width: auto;
+}
+
+.step-actions {
+  display: flex;
+  gap: 10px;
+  justify-content: flex-end;
+}
+
+button {
+  background: var(--panel-muted);
+  border: 1px solid var(--line);
+  border-radius: 7px;
+  cursor: pointer;
+  font-weight: 700;
+  min-height: 38px;
+  padding: 0 13px;
+}
+
+button:hover:not(:disabled) {
+  background: oklch(0.925 0.018 235);
+}
+
+.primary-action {
+  background: var(--accent);
+  border-color: var(--accent);
+  color: oklch(0.985 0.006 235);
+}
+
+.primary-action:hover:not(:disabled) {
+  background: var(--accent-strong);
+  border-color: var(--accent-strong);
+}
+
+button:disabled,
+input:disabled,
+select:disabled {
+  cursor: not-allowed;
+  opacity: 0.55;
+}
+
+.error,
+.warning {
+  border-radius: 7px;
+  font-size: 13px;
+  line-height: 1.4;
+  padding: 9px 10px;
+}
+
+.error {
+  background: var(--danger-soft);
+  border: 1px solid oklch(0.78 0.07 28);
+  color: var(--danger);
+}
+
+.warning {
+  background: var(--warning-soft);
+  border: 1px solid oklch(0.78 0.08 72);
+  color: var(--warning);
+}
+
+@media (max-width: 640px) {
+  .provider-grid {
+    grid-template-columns: 1fr;
+  }
+
+  .step-actions,
+  .storage-mode {
+    align-items: stretch;
+    flex-direction: column;
+  }
+}

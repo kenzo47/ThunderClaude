@@ -1,0 +1,120 @@
+<!doctype html>
+<html lang="en">
+  <head>
+    <meta charset="utf-8" />
+    <meta
+      http-equiv="Content-Security-Policy"
+      content="default-src 'self'; connect-src 'none'; object-src 'none'; script-src 'self'; style-src 'self'"
+    />
+    <meta name="viewport" content="width=device-width, initial-scale=1" />
+    <title>ThunderClaude Setup</title>
+    <link rel="stylesheet" href="welcome.css" />
+  </head>
+  <body>
+    <main class="wizard-shell">
+      <header class="wizard-header">
+        <p class="eyebrow">ThunderClaude setup</p>
+        <h1>Connect a provider before rewriting drafts.</h1>
+        <p id="status" class="status" aria-live="polite">
+          Choose a provider, verify it, then open a compose window.
+        </p>
+      </header>
+
+      <section id="step-welcome" class="panel wizard-step">
+        <h2>Start with one provider</h2>
+        <p>
+          ThunderClaude only sends draft text to the provider you configure. You can add more
+          providers later from Options.
+        </p>
+        <button id="get-started" class="primary-action" type="button">Get started</button>
+      </section>
+
+      <section id="step-provider" class="panel wizard-step" hidden>
+        <div class="step-heading">
+          <h2>Provider</h2>
+          <p>Ollama is local and does not need a key.</p>
+        </div>
+        <div id="provider-grid" class="provider-grid"></div>
+        <div class="step-actions">
+          <button id="provider-next" class="primary-action" type="button">Continue</button>
+        </div>
+      </section>
+
+      <section id="step-key" class="panel wizard-step" hidden>
+        <div class="step-heading">
+          <h2 id="provider-title">Provider key</h2>
+          <p id="provider-note"></p>
+        </div>
+
+        <label class="field">
+          <span>Default model</span>
+          <select id="default-model"></select>
+        </label>
+
+        <label id="custom-model-field" class="field" hidden>
+          <span>Custom model</span>
+          <input id="custom-model" autocomplete="off" />
+        </label>
+
+        <label id="base-url-field" class="field" hidden>
+          <span>Base URL</span>
+          <input id="base-url" autocomplete="off" placeholder="https://provider.example/v1" />
+        </label>
+
+        <label id="key-field" class="field">
+          <span>API key</span>
+          <input id="api-key" autocomplete="off" />
+        </label>
+
+        <fieldset id="storage-mode" class="storage-mode">
+          <legend>Key storage</legend>
+          <label>
+            <input name="key-mode" type="radio" value="encrypted" checked />
+            Encrypted
+          </label>
+          <label>
+            <input name="key-mode" type="radio" value="plain" />
+            Plaintext warning
+          </label>
+        </fieldset>
+
+        <div class="step-actions">
+          <button id="key-back" type="button">Back</button>
+          <button id="key-next" class="primary-action" type="button">Continue</button>
+        </div>
+      </section>
+
+      <section id="step-storage" class="panel wizard-step" hidden>
+        <h2>Encrypted storage</h2>
+        <p id="storage-copy">
+          Set a storage phrase for encrypted provider keys. You will enter it again after the
+          background session locks.
+        </p>
+        <label id="storage-phrase-field" class="field">
+          <span>Storage phrase</span>
+          <input id="storage-phrase" autocomplete="new-password" type="password" />
+        </label>
+        <p id="plain-warning" class="warning" hidden>
+          Plaintext warning mode stores an obfuscated key locally. Anyone with profile access may
+          recover it.
+        </p>
+        <div class="step-actions">
+          <button id="storage-back" type="button">Back</button>
+          <button id="test-provider" class="primary-action" type="button">Test connection</button>
+        </div>
+      </section>
+
+      <section id="step-done" class="panel wizard-step" hidden>
+        <h2>Ready</h2>
+        <p>Open a compose window, click ThunderClaude, and choose a rewrite preset.</p>
+        <div class="step-actions">
+          <button id="open-options" type="button">Open Options</button>
+          <button id="finish" class="primary-action" type="button">Close setup</button>
+        </div>
+      </section>
+
+      <p id="error" class="error" role="alert" hidden></p>
+    </main>
+    <script type="module" src="welcome.js"></script>
+  </body>
+</html>

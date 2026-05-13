@@ -217,6 +217,23 @@ export async function testProviderOptions(
   };
 }
 
+export async function completeOnboarding({ providerId } = {}, options = {}) {
+  getProvider(providerId);
+
+  return updateSettings(
+    (settings) => ({
+      ...settings,
+      defaultProviderId: providerId,
+      onboardingComplete: true,
+      verifiedProviderIds: {
+        ...settings.verifiedProviderIds,
+        [providerId]: true,
+      },
+    }),
+    options
+  );
+}
+
 export async function handleOptionsMessage(message, options = {}) {
   if (message?.action === 'options:getSnapshot') {
     return getOptionsSnapshot(options);
@@ -237,6 +254,10 @@ export async function handleOptionsMessage(message, options = {}) {
 
   if (message?.action === 'options:testProvider') {
     return testProviderOptions(message, options);
+  }
+
+  if (message?.action === 'options:completeOnboarding') {
+    return completeOnboarding(message, options);
   }
 
   return undefined;

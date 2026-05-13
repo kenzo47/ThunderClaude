@@ -6,6 +6,8 @@ export const DEFAULT_SETTINGS = Object.freeze({
   defaultProviderId: 'anthropic',
   keyModeByProvider: {},
   keySalt: null,
+  onboardingComplete: false,
+  verifiedProviderIds: {},
 });
 
 function getStorageArea(storageArea) {
@@ -35,6 +37,11 @@ function normalizeSettings(settings = {}) {
       ...(settings.keyModeByProvider ?? {}),
     },
     keySalt: settings.keySalt ?? DEFAULT_SETTINGS.keySalt,
+    onboardingComplete: Boolean(settings.onboardingComplete),
+    verifiedProviderIds: {
+      ...DEFAULT_SETTINGS.verifiedProviderIds,
+      ...(settings.verifiedProviderIds ?? {}),
+    },
   };
 }
 

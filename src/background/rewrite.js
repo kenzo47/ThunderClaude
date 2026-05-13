@@ -131,6 +131,12 @@ export async function rewriteComposeDraft(message, options = {}) {
 
   const getSettingsImpl = options.getSettingsImpl ?? getSettings;
   const settings = await getSettingsImpl();
+  if (!settings.onboardingComplete) {
+    throw new RewriteError('Finish ThunderClaude onboarding before rewriting drafts.', {
+      code: 'onboarding_required',
+    });
+  }
+
   const providerId = message?.providerId ?? settings.defaultProviderId;
   if (!providerId) {
     throw new RewriteError('A provider is required.', {

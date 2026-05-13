@@ -79,10 +79,19 @@ async function loadOptionsSnapshot() {
     optionsSnapshot = await sendMessage({
       action: 'options:getSnapshot',
     });
+
+    if (!optionsSnapshot.settings.onboardingComplete) {
+      setControlsDisabled(true);
+      globalThis.location.href = '../onboarding/welcome.html';
+      return false;
+    }
+
     providers = optionsSnapshot.providers;
   } catch (error) {
     console.warn('ThunderClaude popup could not load defaults.', error);
   }
+
+  return true;
 }
 
 function renderProviders() {
@@ -181,9 +190,12 @@ async function submitRewrite() {
   status.textContent = 'Draft rewritten.';
 }
 
-await loadOptionsSnapshot();
-renderProviders();
-renderModels();
+const popupCanContinue = await loadOptionsSnapshot();
+
+if (popupCanContinue) {
+  renderProviders();
+  renderModels();
+}
 
 for (const button of presetButtons) {
   button.setAttribute('role', 'radio');
@@ -216,7 +228,9 @@ form.addEventListener('submit', async (event) => {
 });
 
 try {
-  await detectComposeTab();
+  if (popupCanContinue) {
+    await detectComposeTab();
+  }
 } catch (error) {
   console.warn('ThunderClaude popup could not read compose details.', error);
   status.textContent = error.message;

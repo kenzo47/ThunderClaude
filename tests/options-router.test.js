@@ -1,6 +1,7 @@
 import { beforeEach, describe, expect, it } from 'vitest';
 
 import {
+  completeOnboarding,
   getOptionsSnapshot,
   saveProviderOptions,
   testProviderOptions,
@@ -45,6 +46,7 @@ describe('options router', () => {
     expect(snapshot.providers.map((provider) => provider.id)).toContain('anthropic');
     expect(snapshot.providers.map((provider) => provider.id)).toContain('openai-compatible');
     expect(snapshot.settings.defaultProviderId).toBe('anthropic');
+    expect(snapshot.settings.onboardingComplete).toBe(false);
     expect(snapshot.session.locked).toBe(true);
     expect(snapshot.providerConfigs.anthropic).toMatchObject({
       defaultModel: 'claude-opus-4-7',
@@ -168,6 +170,18 @@ describe('options router', () => {
       )
     ).rejects.toMatchObject({
       code: 'missing_provider_key',
+    });
+  });
+
+  it('marks onboarding complete for a verified provider', async () => {
+    const settings = await completeOnboarding({ providerId: 'ollama' }, { storageArea });
+
+    expect(settings).toMatchObject({
+      defaultProviderId: 'ollama',
+      onboardingComplete: true,
+      verifiedProviderIds: {
+        ollama: true,
+      },
     });
   });
 });

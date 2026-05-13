@@ -38,7 +38,11 @@ function getTestSettings() {
     defaultModelByProvider: {},
     defaultProviderId: 'test-provider',
     keyModeByProvider: {},
-    passphraseSalt: null,
+    keySalt: null,
+    onboardingComplete: true,
+    verifiedProviderIds: {
+      'test-provider': true,
+    },
   };
 }
 
@@ -161,6 +165,33 @@ describe('rewrite orchestrator', () => {
       )
     ).rejects.toMatchObject({
       code: 'missing_rewrite_instruction',
+    });
+  });
+
+  it('requires onboarding before rewriting drafts', async () => {
+    const thunderbird = createThunderbird('<p>Hello</p>');
+    const provider = createProvider('<p>Unused</p>');
+
+    await expect(
+      rewriteComposeDraft(
+        {
+          action: 'rewrite',
+          preset: 'shorten',
+          providerId: 'test-provider',
+          tabId: 42,
+        },
+        {
+          getSettingsImpl: async () => ({
+            ...getTestSettings(),
+            onboardingComplete: false,
+          }),
+          getProviderImpl: () => provider,
+          resolveProviderCredential: async () => 'stored-provider-key',
+          thunderbird,
+        }
+      )
+    ).rejects.toMatchObject({
+      code: 'onboarding_required',
     });
   });
 });
