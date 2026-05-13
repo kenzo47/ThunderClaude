@@ -27,7 +27,7 @@ function createProvider(output, calls = []) {
     defaultModel: 'test-model',
     async rewrite(input) {
       calls.push(input);
-      return output;
+      return typeof output === 'function' ? output(input, calls.length - 1) : output;
     },
   };
 }
@@ -97,15 +97,16 @@ describe('rewrite orchestrator', () => {
     ]);
   });
 
-  it('keeps inline media order when relocation is disabled', async () => {
+  it('rewrites segments around inline media when relocation is disabled', async () => {
     const providerCalls = [];
     const thunderbird = createThunderbird(
       '<p>Hello<img src="cid:first">there<img src="cid:second"></p>'
     );
-    const provider = createProvider(
-      '<p>Formal greeting [[TC_IMG_1]] and follow-up [[TC_IMG_2]]</p>',
-      providerCalls
-    );
+    const provider = createProvider((input, index) => {
+      expect(input.system).toContain('one text segment');
+      expect(input.user).not.toContain('[[TC_IMG_');
+      return index === 0 ? '<p>Formal greeting ' : ' and follow-up ';
+    }, providerCalls);
 
     await rewriteComposeDraft(
       {
@@ -123,17 +124,17 @@ describe('rewrite orchestrator', () => {
       }
     );
 
-    expect(providerCalls[0].system).toContain('Keep the tokens in their original order');
+    expect(providerCalls).toHaveLength(2);
     expect(thunderbird.setCalls[0].details.body).toBe(
       '<p>Formal greeting <img src="cid:first"> and follow-up <img src="cid:second"></p>'
     );
   });
 
-  it('fails closed when relocation is disabled and tokens move', async () => {
+  it('fails closed when a fixed segment rewrite invents image tokens', async () => {
     const thunderbird = createThunderbird(
       '<p>Hello<img src="cid:first"><img src="cid:second"></p>'
     );
-    const provider = createProvider('<p>Moved [[TC_IMG_2]] before [[TC_IMG_1]]</p>');
+    const provider = createProvider('<p>Moved [[TC_IMG_2]]</p>');
 
     await expect(
       rewriteComposeDraft(
@@ -152,7 +153,7 @@ describe('rewrite orchestrator', () => {
         }
       )
     ).rejects.toMatchObject({
-      code: 'inline_media_token_order_mismatch',
+      code: 'inline_media_token_mismatch',
     });
     expect(thunderbird.setCalls).toEqual([]);
   });

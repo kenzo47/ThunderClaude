@@ -22,6 +22,9 @@ registerProvider({
         status: 401,
       });
     }
+    if (input.system.includes('one text segment')) {
+      return '<p>Formal ';
+    }
     if (input.user.includes('[[TC_IMG_2]]')) {
       return '<p>Formal [[TC_IMG_1]] then [[TC_IMG_2]]</p>';
     }
@@ -231,11 +234,12 @@ describe('end-to-end happy path', () => {
     ).resolves.toMatchObject({
       ok: true,
       result: {
-        body: '<p>Formal <img src="cid:first"> then <img src="cid:second"></p>',
+        body: '<p>Formal <img src="cid:first"><img src="cid:second"></p>',
       },
     });
 
-    expect(providerCalls[0].system).toContain('Keep the tokens in their original order');
+    expect(providerCalls[0].system).toContain('one text segment');
+    expect(providerCalls[0].user).not.toContain('[[TC_IMG_');
     expect(thunderbird.setCalls).toHaveLength(1);
   });
 

@@ -13,6 +13,7 @@ import { getSettings } from './settings.js';
 import { getSessionKey } from './session-key.js';
 import { restore, tokenize } from './inline-media.js';
 import { handleOptionsMessage } from './options-router.js';
+import { hasRewriteableText, splitAroundInlineMediaTokens } from '../lib/html-segments.js';
 import { allowlistHtml } from '../lib/sanitize.js';
 
 const RELOCATE_PLACEHOLDER_RULE =
@@ -126,6 +127,90 @@ function buildPrompt({ allowImageRelocation, instruction, tokenizedHtml }) {
   };
 }
 
+function buildFixedSegmentPrompt({ instruction, segmentHtml }) {
+  return {
+    system: [
+      'You rewrite one text segment from a Thunderbird compose-window email draft.',
+      'Return only a sanitized HTML fragment suitable for this segment.',
+      'Do not include [[TC_IMG_N]] tokens or image tags; fixed inline images are inserted outside this segment.',
+    ].join(' '),
+    user: [`Instruction: ${instruction}`, 'Segment HTML:', segmentHtml].join('\n\n'),
+  };
+}
+
+async function callProviderRewrite({ baseUrl, key, model, prompt, provider, signal }) {
+  return provider.rewrite({
+    baseUrl,
+    key,
+    model,
+    signal,
+    system: prompt.system,
+    user: prompt.user,
+  });
+}
+
+async function rewriteWithRelocatableMedia({
+  baseUrl,
+  instruction,
+  key,
+  model,
+  provider,
+  signal,
+  tokenizedHtml,
+}) {
+  const prompt = buildPrompt({
+    allowImageRelocation: true,
+    instruction,
+    tokenizedHtml,
+  });
+
+  return callProviderRewrite({
+    baseUrl,
+    key,
+    model,
+    prompt,
+    provider,
+    signal,
+  });
+}
+
+async function rewriteWithFixedMedia({
+  baseUrl,
+  instruction,
+  key,
+  model,
+  provider,
+  sanitizeImpl,
+  signal,
+  tokenizedHtml,
+}) {
+  const rewrittenSegments = [];
+
+  for (const segment of splitAroundInlineMediaTokens(tokenizedHtml)) {
+    if (segment.type === 'token' || !hasRewriteableText(segment.value)) {
+      rewrittenSegments.push(segment.value);
+      continue;
+    }
+
+    const prompt = buildFixedSegmentPrompt({
+      instruction,
+      segmentHtml: segment.value,
+    });
+    const rewrittenSegment = await callProviderRewrite({
+      baseUrl,
+      key,
+      model,
+      prompt,
+      provider,
+      signal,
+    });
+
+    rewrittenSegments.push(sanitizeImpl(rewrittenSegment));
+  }
+
+  return rewrittenSegments.join('');
+}
+
 async function defaultResolveProviderCredential(providerId, options = {}) {
   if (providerId === 'ollama') {
     return '';
@@ -190,24 +275,34 @@ export async function rewriteComposeDraft(message, options = {}) {
   const details = await thunderbird.compose.getComposeDetails(tabId);
   const tokenized = (options.tokenizeImpl ?? tokenize)(normalizeComposeBody(details));
   const allowImageRelocation = message?.allowImageRelocation !== false;
-  const prompt = buildPrompt({
-    allowImageRelocation,
-    instruction,
-    tokenizedHtml: tokenized.text,
-  });
   const resolveProviderCredential =
     options.resolveProviderCredential ?? defaultResolveProviderCredential;
   const key = await resolveProviderCredential(providerId, options);
   const model = resolveModel(provider, message, settings);
-  const rawOutput = await provider.rewrite({
-    baseUrl: message?.baseUrl ?? settings.customBaseUrlByProvider[providerId],
-    key,
-    model,
-    signal: options.signal,
-    system: prompt.system,
-    user: prompt.user,
-  });
   const allowedCidImageHtml = tokenized.media.map((entry) => entry.outerHTML);
+  const sanitizeImpl = options.sanitizeImpl ?? allowlistHtml;
+  const baseUrl = message?.baseUrl ?? settings.customBaseUrlByProvider[providerId];
+  const rawOutput =
+    allowImageRelocation || tokenized.media.length === 0
+      ? await rewriteWithRelocatableMedia({
+          baseUrl,
+          instruction,
+          key,
+          model,
+          provider,
+          signal: options.signal,
+          tokenizedHtml: tokenized.text,
+        })
+      : await rewriteWithFixedMedia({
+          baseUrl,
+          instruction,
+          key,
+          model,
+          provider,
+          sanitizeImpl,
+          signal: options.signal,
+          tokenizedHtml: tokenized.text,
+        });
   const sanitizedOutput = (options.sanitizeImpl ?? allowlistHtml)(rawOutput, {
     allowedCidImageHtml,
   });
