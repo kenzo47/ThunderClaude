@@ -29,6 +29,8 @@ const baseUrlInput = document.querySelector('#base-url');
 const customPrompt = document.querySelector('#custom-prompt');
 const targetLanguageField = document.querySelector('#target-language-field');
 const targetLanguage = document.querySelector('#target-language');
+const storagePhraseField = document.querySelector('#storage-phrase-field');
+const storagePhrase = document.querySelector('#storage-phrase');
 const presetButtons = [...document.querySelectorAll('[data-preset]')];
 
 let activeTabId = null;
@@ -50,6 +52,7 @@ function setControlsDisabled(disabled) {
     baseUrlInput,
     customPrompt,
     targetLanguage,
+    storagePhrase,
     rewriteButton,
   ]) {
     control.disabled = disabled;
@@ -71,7 +74,9 @@ async function sendMessage(message) {
   const response = await thunderbird.runtime.sendMessage(message);
 
   if (!response?.ok) {
-    throw new Error(response?.error?.message ?? 'ThunderClaude request failed.');
+    const error = new Error(response?.error?.message ?? 'ThunderClaude request failed.');
+    error.code = response?.error?.code;
+    throw error;
   }
 
   return response.result;
@@ -111,8 +116,28 @@ function getSelectedProvider() {
   return providers.find((provider) => provider.id === providerSelect.value) ?? providers[0];
 }
 
+function getSelectedProviderConfig() {
+  return optionsSnapshot?.providerConfigs?.[getSelectedProvider().id];
+}
+
 function isOpenAiCompatible(provider) {
   return provider.id === 'openai-compatible';
+}
+
+function shouldUnlockForRewrite() {
+  const config = getSelectedProviderConfig();
+  return Boolean(
+    optionsSnapshot?.session?.locked && config?.hasKey && config?.keyMode === 'encrypted'
+  );
+}
+
+function renderSessionUnlock() {
+  const shouldShow = shouldUnlockForRewrite();
+  storagePhraseField.hidden = !shouldShow;
+
+  if (!shouldShow) {
+    storagePhrase.value = '';
+  }
 }
 
 function renderModels() {
@@ -129,6 +154,7 @@ function renderModels() {
   customModelField.hidden = modelSelect.value !== 'custom';
   baseUrlField.hidden = !isOpenAiCompatible(provider);
   baseUrlInput.value = optionsSnapshot?.settings?.customBaseUrlByProvider?.[provider.id] ?? '';
+  renderSessionUnlock();
 }
 
 function selectPreset(button) {
@@ -208,6 +234,40 @@ async function currentPayload() {
   };
 }
 
+async function unlockForRewriteIfNeeded() {
+  if (!shouldUnlockForRewrite()) {
+    return;
+  }
+
+  const phrase = storagePhrase.value.trim();
+
+  if (!phrase) {
+    throw new Error('Enter a storage phrase.');
+  }
+
+  status.textContent = 'Unlocking encrypted key storage...';
+  optionsSnapshot = await sendMessage({
+    action: 'options:unlock',
+    storagePhrase: phrase,
+  });
+  storagePhrase.value = '';
+  renderSessionUnlock();
+}
+
+function markSessionLocked() {
+  if (!optionsSnapshot) {
+    return;
+  }
+
+  optionsSnapshot = {
+    ...optionsSnapshot,
+    session: {
+      locked: true,
+    },
+  };
+  renderSessionUnlock();
+}
+
 async function detectComposeTab() {
   const [tab] = await thunderbird.tabs.query({ active: true, currentWindow: true });
 
@@ -226,8 +286,12 @@ async function detectComposeTab() {
 async function submitRewrite() {
   setError(null);
   setControlsDisabled(true);
-  status.textContent = 'Rewriting draft...';
+  status.textContent = shouldUnlockForRewrite()
+    ? 'Unlocking encrypted key storage...'
+    : 'Rewriting draft...';
 
+  await unlockForRewriteIfNeeded();
+  status.textContent = 'Rewriting draft...';
   await sendMessage(await currentPayload());
 
   status.textContent = 'Draft rewritten.';
@@ -262,6 +326,9 @@ form.addEventListener('submit', async (event) => {
     await submitRewrite();
   } catch (error) {
     console.warn('ThunderClaude rewrite failed.', error);
+    if (error.code === 'session_locked') {
+      markSessionLocked();
+    }
     setError(error.message);
     status.textContent = 'Rewrite failed.';
   } finally {

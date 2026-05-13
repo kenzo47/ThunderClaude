@@ -1,4 +1,4 @@
-import { beforeEach, describe, expect, it } from 'vitest';
+import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
 
 import { decryptString, encryptString } from '../src/background/crypto.js';
 import {
@@ -11,6 +11,10 @@ import {
 describe('session key', () => {
   beforeEach(() => {
     lockSession();
+  });
+
+  afterEach(() => {
+    vi.useRealTimers();
   });
 
   it('starts locked and throws without an unlocked key', () => {
@@ -31,5 +35,34 @@ describe('session key', () => {
       locked: false,
       salt: firstUnlock.salt,
     });
+  });
+
+  it('evicts the session key after 30 minutes idle', async () => {
+    vi.useFakeTimers();
+
+    await unlockSession('session passphrase');
+
+    expect(getSessionState().locked).toBe(false);
+    vi.advanceTimersByTime(30 * 60 * 1000 - 1);
+    expect(getSessionState().locked).toBe(false);
+
+    vi.advanceTimersByTime(1);
+
+    expect(getSessionState()).toEqual({ locked: true });
+    expect(() => getSessionKey()).toThrow('Session key is locked.');
+  });
+
+  it('refreshes the eviction timer when the key is used', async () => {
+    vi.useFakeTimers();
+
+    await unlockSession('session passphrase');
+    vi.advanceTimersByTime(20 * 60 * 1000);
+    getSessionKey();
+    vi.advanceTimersByTime(20 * 60 * 1000);
+
+    expect(getSessionState().locked).toBe(false);
+    vi.advanceTimersByTime(10 * 60 * 1000);
+
+    expect(getSessionState()).toEqual({ locked: true });
   });
 });
