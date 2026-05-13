@@ -169,6 +169,57 @@ describe('rewrite orchestrator', () => {
     });
   });
 
+  it('builds reply-draft instructions from selected text', async () => {
+    const providerCalls = [];
+    const thunderbird = createThunderbird('<p>My notes</p>');
+    const provider = createProvider('<p>Thanks, Tuesday works.</p>', providerCalls);
+
+    await rewriteComposeDraft(
+      {
+        action: 'rewrite',
+        preset: 'reply-draft',
+        providerId: 'test-provider',
+        selectionText: 'Can we move the meeting to Tuesday?',
+        tabId: 7,
+      },
+      {
+        getSettingsImpl: async () => getTestSettings(),
+        getProviderImpl: () => provider,
+        resolveProviderCredential: async () => 'stored-provider-key',
+        thunderbird,
+      }
+    );
+
+    expect(providerCalls[0].user).toContain('Draft a clear, helpful reply');
+    expect(providerCalls[0].user).toContain('Can we move the meeting to Tuesday?');
+    expect(thunderbird.setCalls[0].details.body).toBe('<p>Thanks, Tuesday works.</p>');
+  });
+
+  it('requires selected text for reply-draft', async () => {
+    const thunderbird = createThunderbird('<p>Hello</p>');
+    const provider = createProvider('<p>Unused</p>');
+
+    await expect(
+      rewriteComposeDraft(
+        {
+          action: 'rewrite',
+          preset: 'reply-draft',
+          providerId: 'test-provider',
+          selectionText: '   ',
+          tabId: 7,
+        },
+        {
+          getSettingsImpl: async () => getTestSettings(),
+          getProviderImpl: () => provider,
+          resolveProviderCredential: async () => 'stored-provider-key',
+          thunderbird,
+        }
+      )
+    ).rejects.toMatchObject({
+      code: 'missing_reply_selection',
+    });
+  });
+
   it('does not overwrite the draft when inline media validation fails', async () => {
     const thunderbird = createThunderbird('<p>Hello<img src="cid:first"></p>');
     const provider = createProvider('<p>AI dropped the image.</p>');

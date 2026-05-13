@@ -16,7 +16,7 @@
     "48": "icons/icon-48.png",
     "96": "icons/icon-96.png"
   },
-  "permissions": ["compose", "storage"],
+  "permissions": ["compose", "scripting", "storage"],
   "host_permissions": [
     "http://localhost:11434/*",
     "https://api.anthropic.com/*",

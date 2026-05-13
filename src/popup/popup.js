@@ -143,12 +143,40 @@ function selectPreset(button) {
   targetLanguageField.hidden = selectedPreset !== 'translate';
 }
 
-function currentPayload() {
+function readSelectionFromFrame() {
+  const selection = globalThis.getSelection?.();
+  return selection?.toString().trim() ?? '';
+}
+
+async function getSelectedText() {
+  if (!thunderbird.scripting?.executeScript) {
+    throw new Error('Select text in the compose window to draft a reply.');
+  }
+
+  let results;
+  try {
+    results = await thunderbird.scripting.executeScript({
+      func: readSelectionFromFrame,
+      injectImmediately: true,
+      target: {
+        allFrames: true,
+        tabId: activeTabId,
+      },
+    });
+  } catch {
+    throw new Error('Select text in the compose window to draft a reply.');
+  }
+
+  return (results ?? []).map((entry) => entry?.result?.trim()).find(Boolean) ?? '';
+}
+
+async function currentPayload() {
   const custom = customPrompt.value.trim();
   const provider = getSelectedProvider();
   const modelId = modelSelect.value;
   const customModel = customModelInput.value.trim();
   const baseUrl = baseUrlInput.value.trim();
+  let selectionText;
 
   if (modelId === 'custom' && !customModel) {
     throw new Error('Enter a custom model.');
@@ -156,6 +184,14 @@ function currentPayload() {
 
   if (isOpenAiCompatible(provider) && !baseUrl) {
     throw new Error('Enter a base URL.');
+  }
+
+  if (selectedPreset === 'reply-draft' && !custom) {
+    selectionText = await getSelectedText();
+
+    if (!selectionText) {
+      throw new Error('Select text in the compose window to draft a reply.');
+    }
   }
 
   return {
@@ -166,6 +202,7 @@ function currentPayload() {
     modelId,
     preset: custom ? undefined : selectedPreset,
     providerId: provider.id,
+    selectionText,
     tabId: activeTabId,
     targetLanguage: selectedPreset === 'translate' && !custom ? targetLanguage.value : undefined,
   };
@@ -191,7 +228,7 @@ async function submitRewrite() {
   setControlsDisabled(true);
   status.textContent = 'Rewriting draft...';
 
-  await sendMessage(currentPayload());
+  await sendMessage(await currentPayload());
 
   status.textContent = 'Draft rewritten.';
 }

@@ -62,6 +62,10 @@ function normalizeInstruction(message) {
     return normalizeTranslateInstruction(message);
   }
 
+  if (preset === 'reply-draft') {
+    return normalizeReplyDraftInstruction(message);
+  }
+
   throw new RewriteError('Choose a rewrite preset or enter a custom instruction.', {
     code: 'missing_rewrite_instruction',
   });
@@ -77,6 +81,23 @@ function normalizeTranslateInstruction({ targetLanguage }) {
   }
 
   return `Translate the email to ${language}. Preserve meaning, formatting, and tone.`;
+}
+
+function normalizeReplyDraftInstruction({ selectionText }) {
+  const selection = selectionText?.trim();
+
+  if (!selection) {
+    throw new RewriteError('Select text in the compose window to draft a reply.', {
+      code: 'missing_reply_selection',
+    });
+  }
+
+  return [
+    'Draft a clear, helpful reply to the selected text below.',
+    'Use the current draft as context if it contains notes, but focus the response on the selection.',
+    'Selected text:',
+    selection,
+  ].join('\n\n');
 }
 
 function resolveModel(provider, { modelId, customModel }, settings) {
