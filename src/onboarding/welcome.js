@@ -183,6 +183,11 @@ async function testAndSaveProvider() {
     });
   }
 
+  await sendMessage({
+    action: 'options:saveProvider',
+    ...payload,
+  });
+
   const testResult = await sendMessage({
     action: 'options:testProvider',
     ...payload,
@@ -192,10 +197,6 @@ async function testAndSaveProvider() {
     throw new Error('Connection test failed.');
   }
 
-  await sendMessage({
-    action: 'options:saveProvider',
-    ...payload,
-  });
   await sendMessage({
     action: 'options:completeOnboarding',
     providerId: payload.providerId,

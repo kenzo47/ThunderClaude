@@ -100,6 +100,7 @@ function getProviderConfig(settings, providerId, keyStatus) {
     hasKey: keyStatus.hasKey,
     keyMode: keyStatus.keyMode,
     localAccessEnabled: Boolean(settings.enabledLocalProviderIds[providerId]),
+    verified: Boolean(settings.verifiedProviderIds[providerId]),
   };
 }
 
@@ -222,6 +223,10 @@ export async function saveProviderOptions(
           ...settings.keyModeByProvider,
           [providerId]: storedKeyMode,
         },
+        verifiedProviderIds: {
+          ...settings.verifiedProviderIds,
+          [providerId]: false,
+        },
       };
     },
     { storageArea }
@@ -246,19 +251,45 @@ export async function testProviderOptions(
   const settings = await getSettings(options);
   assertLocalProviderEnabled(providerId, settings, localAccessEnabled);
   const key = await resolveProviderKey(providerId, resolvedKeyMode, apiKey, options);
+  const connected = await provider.testConnection(key, {
+    baseUrl: customBaseUrl?.trim(),
+    fetchImpl: options.fetchImpl,
+    model: defaultModel?.trim() || provider.defaultModel,
+  });
 
-  return {
-    connected: await provider.testConnection(key, {
-      baseUrl: customBaseUrl?.trim(),
-      model: defaultModel?.trim() || provider.defaultModel,
+  await updateSettings(
+    (settings) => ({
+      ...settings,
+      verifiedProviderIds: {
+        ...settings.verifiedProviderIds,
+        [providerId]: connected,
+      },
     }),
-  };
+    options
+  );
+
+  return { connected };
 }
 
 export async function completeOnboarding({ providerId } = {}, options = {}) {
   getProvider(providerId);
+  const storageArea = getStorageArea(options.storageArea);
   const settings = await getSettings(options);
   assertLocalProviderEnabled(providerId, settings, false);
+  const keyStatus = await getKeyStatus(providerId, settings, storageArea);
+  const providerConfigured = LOCAL_PROVIDER_IDS.has(providerId) || keyStatus.hasKey;
+
+  if (!providerConfigured) {
+    throw new OptionsError('Configure this provider before completing onboarding.', {
+      code: 'provider_not_configured',
+    });
+  }
+
+  if (!settings.verifiedProviderIds[providerId]) {
+    throw new OptionsError('Test this provider before completing onboarding.', {
+      code: 'provider_not_verified',
+    });
+  }
 
   return updateSettings(
     (settings) => ({

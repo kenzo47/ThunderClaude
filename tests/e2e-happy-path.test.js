@@ -104,6 +104,12 @@ describe('end-to-end happy path', () => {
       providerId: 'mock-e2e',
     });
     await router({
+      action: 'options:testProvider',
+      defaultModel: 'mock-model',
+      keyMode: 'encrypted',
+      providerId: 'mock-e2e',
+    });
+    await router({
       action: 'options:completeOnboarding',
       providerId: 'mock-e2e',
     });
@@ -121,21 +127,6 @@ describe('end-to-end happy path', () => {
         session: {
           locked: false,
         },
-      },
-    });
-
-    await expect(
-      router({
-        action: 'options:testProvider',
-        apiKey: 'sk-test-fake-key-do-not-use',
-        defaultModel: 'mock-model',
-        keyMode: 'encrypted',
-        providerId: 'mock-e2e',
-      })
-    ).resolves.toMatchObject({
-      ok: true,
-      result: {
-        connected: true,
       },
     });
 
@@ -160,6 +151,20 @@ describe('end-to-end happy path', () => {
     });
 
     expect(JSON.stringify(storageArea.values)).not.toContain('sk-test-fake-key-do-not-use');
+
+    await expect(
+      router({
+        action: 'options:testProvider',
+        defaultModel: 'mock-model',
+        keyMode: 'encrypted',
+        providerId: 'mock-e2e',
+      })
+    ).resolves.toMatchObject({
+      ok: true,
+      result: {
+        connected: true,
+      },
+    });
 
     await expect(
       router({
@@ -195,6 +200,7 @@ describe('end-to-end happy path', () => {
         key: 'sk-test-fake-key-do-not-use',
         options: {
           baseUrl: '',
+          fetchImpl: undefined,
           model: 'mock-model',
         },
       },
@@ -244,7 +250,14 @@ describe('end-to-end happy path', () => {
   });
 
   it('leaves the draft untouched when a stored key is rejected', async () => {
-    await configureProvider('sk-test-wrong-key-do-not-use');
+    await configureProvider();
+    await router({
+      action: 'options:saveProvider',
+      apiKey: 'sk-test-wrong-key-do-not-use',
+      defaultModel: 'mock-model',
+      keyMode: 'encrypted',
+      providerId: 'mock-e2e',
+    });
 
     await expect(
       router({

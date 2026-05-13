@@ -32,6 +32,21 @@ function createStorageArea() {
   };
 }
 
+function successfulOllamaResponse(text = 'OK') {
+  return {
+    ok: true,
+    status: 200,
+    async json() {
+      return {
+        message: {
+          content: text,
+          role: 'assistant',
+        },
+      };
+    },
+  };
+}
+
 describe('options router', () => {
   let storageArea;
 
@@ -58,6 +73,7 @@ describe('options router', () => {
       hasKey: false,
       keyMode: 'none',
       localAccessEnabled: false,
+      verified: false,
     });
   });
 
@@ -93,6 +109,7 @@ describe('options router', () => {
       defaultModel: 'gpt-5.4',
       hasKey: true,
       keyMode: 'plain',
+      verified: false,
     });
   });
 
@@ -210,10 +227,11 @@ describe('options router', () => {
     expect(snapshot.providerConfigs.ollama).toMatchObject({
       keyMode: 'none',
       localAccessEnabled: true,
+      verified: false,
     });
   });
 
-  it('marks onboarding complete for a verified provider', async () => {
+  it('requires provider verification before onboarding completes', async () => {
     await saveProviderOptions(
       {
         defaultModel: 'llama3.2',
@@ -223,6 +241,39 @@ describe('options router', () => {
       },
       { storageArea }
     );
+
+    await expect(
+      completeOnboarding({ providerId: 'ollama' }, { storageArea })
+    ).rejects.toMatchObject({
+      code: 'provider_not_verified',
+    });
+  });
+
+  it('marks onboarding complete for a configured and verified provider', async () => {
+    await saveProviderOptions(
+      {
+        defaultModel: 'llama3.2',
+        keyMode: 'none',
+        localAccessEnabled: true,
+        providerId: 'ollama',
+      },
+      { storageArea }
+    );
+    await expect(
+      testProviderOptions(
+        {
+          defaultModel: 'llama3.2',
+          localAccessEnabled: true,
+          providerId: 'ollama',
+        },
+        {
+          fetchImpl: async () => successfulOllamaResponse(),
+          storageArea,
+        }
+      )
+    ).resolves.toEqual({
+      connected: true,
+    });
 
     const settings = await completeOnboarding({ providerId: 'ollama' }, { storageArea });
 
