@@ -1,0 +1,12 @@
+node_modules/
+dist/
+*.xpi
+.DS_Store
+.env
+.env.*
+*.log
+.vscode/
+.idea/
+coverage/
+.nyc_output/
+.web-ext-artifacts/
