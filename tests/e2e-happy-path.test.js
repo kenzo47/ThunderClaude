@@ -1,6 +1,6 @@
 import { beforeEach, describe, expect, it } from 'vitest';
 
-import { registerProvider } from '../src/background/providers/index.js';
+import { ProviderError, registerProvider } from '../src/background/providers/index.js';
 import { createMessageRouter } from '../src/background/rewrite.js';
 import { lockSession } from '../src/background/session-key.js';
 
@@ -16,6 +16,15 @@ registerProvider({
   modelList: ['mock-model', 'mock-fast'],
   async rewrite(input) {
     providerCalls.push(input);
+    if (input.key !== 'sk-test-fake-key-do-not-use') {
+      throw new ProviderError('invalid api key', {
+        code: 'authentication_error',
+        status: 401,
+      });
+    }
+    if (input.user.includes('[[TC_IMG_2]]')) {
+      return '<p>Formal [[TC_IMG_1]] then [[TC_IMG_2]]</p>';
+    }
     return '<p>Formal [[TC_IMG_1]]</p>';
   },
   async testConnection(key, options) {
@@ -78,6 +87,24 @@ describe('end-to-end happy path', () => {
     thunderbird = createThunderbird('<p>Hello<img src="cid:first"></p>');
     router = createMessageRouter({ storageArea, thunderbird });
   });
+
+  async function configureProvider(apiKey = 'sk-test-fake-key-do-not-use') {
+    await router({
+      action: 'options:unlock',
+      storagePhrase: 'storage phrase',
+    });
+    await router({
+      action: 'options:saveProvider',
+      apiKey,
+      defaultModel: 'mock-model',
+      keyMode: 'encrypted',
+      providerId: 'mock-e2e',
+    });
+    await router({
+      action: 'options:completeOnboarding',
+      providerId: 'mock-e2e',
+    });
+  }
 
   it('unlocks, stores an encrypted key, completes onboarding, and rewrites a draft', async () => {
     await expect(
@@ -186,5 +213,49 @@ describe('end-to-end happy path', () => {
         tabId: 42,
       },
     ]);
+  });
+
+  it('keeps inline images ordered when relocation is disabled', async () => {
+    thunderbird = createThunderbird('<p>Hello<img src="cid:first"><img src="cid:second"></p>');
+    router = createMessageRouter({ storageArea, thunderbird });
+    await configureProvider();
+
+    await expect(
+      router({
+        action: 'rewrite',
+        allowImageRelocation: false,
+        preset: 'make-formal',
+        providerId: 'mock-e2e',
+        tabId: 42,
+      })
+    ).resolves.toMatchObject({
+      ok: true,
+      result: {
+        body: '<p>Formal <img src="cid:first"> then <img src="cid:second"></p>',
+      },
+    });
+
+    expect(providerCalls[0].system).toContain('Keep the tokens in their original order');
+    expect(thunderbird.setCalls).toHaveLength(1);
+  });
+
+  it('leaves the draft untouched when a stored key is rejected', async () => {
+    await configureProvider('sk-test-wrong-key-do-not-use');
+
+    await expect(
+      router({
+        action: 'rewrite',
+        preset: 'make-formal',
+        providerId: 'mock-e2e',
+        tabId: 42,
+      })
+    ).resolves.toMatchObject({
+      error: {
+        code: 'authentication_error',
+      },
+      ok: false,
+    });
+
+    expect(thunderbird.setCalls).toEqual([]);
   });
 });
