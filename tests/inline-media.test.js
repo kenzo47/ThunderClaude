@@ -86,6 +86,19 @@ describe('inline media', () => {
     );
   });
 
+  it('rejects moved tokens when original order is required', () => {
+    const { mediaMap } = tokenize(
+      '<p>Start<img src="cid:first@example">Middle<img src="cid:second@example">End</p>',
+      { DOMParserImpl: null }
+    );
+
+    expect(() =>
+      restore('<p>[[TC_IMG_2]] Rewritten [[TC_IMG_1]]</p>', mediaMap, {
+        requireOriginalOrder: true,
+      })
+    ).toThrow('AI moved an image, retry?');
+  });
+
   it('restores from serializable media entries', () => {
     const { media, text } = tokenize('<p>Hi<img src="cid:first@example"></p>', {
       DOMParserImpl: null,

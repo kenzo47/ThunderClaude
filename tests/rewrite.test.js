@@ -83,6 +83,7 @@ describe('rewrite orchestrator', () => {
       model: 'chosen-model',
     });
     expect(providerCalls[0].system).toContain('Preserve every [[TC_IMG_N]] token exactly once.');
+    expect(providerCalls[0].system).toContain('You may move the tokens to better locations');
     expect(providerCalls[0].user).toContain('Rewrite the email in a more formal');
     expect(providerCalls[0].user).toContain('<p>Hello[[TC_IMG_1]]</p>');
     expect(thunderbird.setCalls).toEqual([
@@ -94,6 +95,66 @@ describe('rewrite orchestrator', () => {
         tabId: 42,
       },
     ]);
+  });
+
+  it('keeps inline media order when relocation is disabled', async () => {
+    const providerCalls = [];
+    const thunderbird = createThunderbird(
+      '<p>Hello<img src="cid:first">there<img src="cid:second"></p>'
+    );
+    const provider = createProvider(
+      '<p>Formal greeting [[TC_IMG_1]] and follow-up [[TC_IMG_2]]</p>',
+      providerCalls
+    );
+
+    await rewriteComposeDraft(
+      {
+        action: 'rewrite',
+        allowImageRelocation: false,
+        preset: 'make-formal',
+        providerId: 'test-provider',
+        tabId: 42,
+      },
+      {
+        getSettingsImpl: async () => getTestSettings(),
+        getProviderImpl: () => provider,
+        resolveProviderCredential: async () => 'stored-provider-key',
+        thunderbird,
+      }
+    );
+
+    expect(providerCalls[0].system).toContain('Keep the tokens in their original order');
+    expect(thunderbird.setCalls[0].details.body).toBe(
+      '<p>Formal greeting <img src="cid:first"> and follow-up <img src="cid:second"></p>'
+    );
+  });
+
+  it('fails closed when relocation is disabled and tokens move', async () => {
+    const thunderbird = createThunderbird(
+      '<p>Hello<img src="cid:first"><img src="cid:second"></p>'
+    );
+    const provider = createProvider('<p>Moved [[TC_IMG_2]] before [[TC_IMG_1]]</p>');
+
+    await expect(
+      rewriteComposeDraft(
+        {
+          action: 'rewrite',
+          allowImageRelocation: false,
+          preset: 'make-formal',
+          providerId: 'test-provider',
+          tabId: 42,
+        },
+        {
+          getSettingsImpl: async () => getTestSettings(),
+          getProviderImpl: () => provider,
+          resolveProviderCredential: async () => 'stored-provider-key',
+          thunderbird,
+        }
+      )
+    ).rejects.toMatchObject({
+      code: 'inline_media_token_order_mismatch',
+    });
+    expect(thunderbird.setCalls).toEqual([]);
   });
 
   it('uses custom instructions when supplied', async () => {

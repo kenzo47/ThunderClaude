@@ -15,8 +15,10 @@ import { restore, tokenize } from './inline-media.js';
 import { handleOptionsMessage } from './options-router.js';
 import { allowlistHtml } from '../lib/sanitize.js';
 
-const PLACEHOLDER_RULE =
+const RELOCATE_PLACEHOLDER_RULE =
   'Preserve every [[TC_IMG_N]] token exactly once. You may move the tokens to better locations, but never delete, duplicate, rename, or invent them.';
+const KEEP_PLACEHOLDER_RULE =
+  'Preserve every [[TC_IMG_N]] token exactly once. Keep the tokens in their original order and locations; never delete, duplicate, rename, invent, or move them.';
 
 const PRESETS = {
   'make-formal': 'Rewrite the email in a more formal and professional tone.',
@@ -112,13 +114,13 @@ function resolveModel(provider, { modelId, customModel }, settings) {
   return settings.defaultModelByProvider[provider.id] ?? provider.defaultModel;
 }
 
-function buildPrompt({ instruction, tokenizedHtml }) {
+function buildPrompt({ allowImageRelocation, instruction, tokenizedHtml }) {
   return {
     system: [
       'You rewrite Thunderbird compose-window email drafts.',
       'Return only a sanitized HTML fragment suitable for an email body.',
       'Use only simple formatting tags such as paragraphs, lists, emphasis, and links.',
-      PLACEHOLDER_RULE,
+      allowImageRelocation ? RELOCATE_PLACEHOLDER_RULE : KEEP_PLACEHOLDER_RULE,
     ].join(' '),
     user: [`Instruction: ${instruction}`, 'Draft HTML:', tokenizedHtml].join('\n\n'),
   };
@@ -187,7 +189,9 @@ export async function rewriteComposeDraft(message, options = {}) {
   const instruction = normalizeInstruction(message);
   const details = await thunderbird.compose.getComposeDetails(tabId);
   const tokenized = (options.tokenizeImpl ?? tokenize)(normalizeComposeBody(details));
+  const allowImageRelocation = message?.allowImageRelocation !== false;
   const prompt = buildPrompt({
+    allowImageRelocation,
     instruction,
     tokenizedHtml: tokenized.text,
   });
@@ -207,7 +211,9 @@ export async function rewriteComposeDraft(message, options = {}) {
   const sanitizedOutput = (options.sanitizeImpl ?? allowlistHtml)(rawOutput, {
     allowedCidImageHtml,
   });
-  const restoredOutput = (options.restoreImpl ?? restore)(sanitizedOutput, tokenized.mediaMap);
+  const restoredOutput = (options.restoreImpl ?? restore)(sanitizedOutput, tokenized.mediaMap, {
+    requireOriginalOrder: !allowImageRelocation,
+  });
   const body = (options.sanitizeImpl ?? allowlistHtml)(restoredOutput, {
     allowedCidImageHtml,
   });

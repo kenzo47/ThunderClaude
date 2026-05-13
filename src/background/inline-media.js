@@ -153,7 +153,19 @@ function validateTokenCounts(html, mediaMap) {
   }
 }
 
-export function restore(html, mediaMap) {
+function validateTokenOrder(html, mediaMap) {
+  const expectedTokens = [...mediaMap.keys()];
+  const actualTokens = [...html.matchAll(TOKEN_PATTERN)].map((match) => match[0]);
+  TOKEN_PATTERN.lastIndex = 0;
+
+  if (actualTokens.some((token, index) => token !== expectedTokens[index])) {
+    throw new InlineMediaError('AI moved an image, retry?', {
+      code: 'inline_media_token_order_mismatch',
+    });
+  }
+}
+
+export function restore(html, mediaMap, { requireOriginalOrder = false } = {}) {
   if (typeof html !== 'string') {
     throw new InlineMediaError('Rewritten body HTML must be a string.', {
       code: 'invalid_inline_media_input',
@@ -162,6 +174,9 @@ export function restore(html, mediaMap) {
 
   const normalizedMediaMap = normalizeMediaMap(mediaMap);
   validateTokenCounts(html, normalizedMediaMap);
+  if (requireOriginalOrder) {
+    validateTokenOrder(html, normalizedMediaMap);
+  }
 
   return html.replace(TOKEN_PATTERN, (token) => normalizedMediaMap.get(token).outerHTML);
 }

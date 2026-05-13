@@ -31,6 +31,7 @@ const targetLanguageField = document.querySelector('#target-language-field');
 const targetLanguage = document.querySelector('#target-language');
 const storagePhraseField = document.querySelector('#storage-phrase-field');
 const storagePhrase = document.querySelector('#storage-phrase');
+const allowImageRelocation = document.querySelector('#allow-image-relocation');
 const presetButtons = [...document.querySelectorAll('[data-preset]')];
 
 let activeTabId = null;
@@ -53,6 +54,7 @@ function setControlsDisabled(disabled) {
     customPrompt,
     targetLanguage,
     storagePhrase,
+    allowImageRelocation,
     rewriteButton,
   ]) {
     control.disabled = disabled;
@@ -222,6 +224,7 @@ async function currentPayload() {
 
   return {
     action: 'rewrite',
+    allowImageRelocation: allowImageRelocation.checked,
     baseUrl: isOpenAiCompatible(provider) ? baseUrl : undefined,
     customModel: modelId === 'custom' ? customModel : undefined,
     customPrompt: custom,
