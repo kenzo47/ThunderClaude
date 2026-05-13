@@ -17,7 +17,11 @@
     "96": "icons/icon-96.png"
   },
   "permissions": ["compose", "storage"],
-  "host_permissions": ["https://api.anthropic.com/*"],
+  "host_permissions": [
+    "https://api.anthropic.com/*",
+    "https://api.openai.com/*",
+    "https://generativelanguage.googleapis.com/*"
+  ],
   "background": {
     "scripts": ["src/background/index.js"],
     "type": "module"
