@@ -1,4 +1,5 @@
 import { warn } from '../lib/log.js';
+import { ensureCustomEndpointPermission } from '../lib/host-permissions.js';
 
 const thunderbird = globalThis.messenger ?? globalThis.browser;
 
@@ -295,9 +296,15 @@ async function submitRewrite() {
     ? 'Unlocking encrypted key storage...'
     : 'Rewriting draft...';
 
+  const payload = await currentPayload();
+  await ensureCustomEndpointPermission(
+    payload.providerId,
+    payload.baseUrl,
+    thunderbird.permissions
+  );
   await unlockForRewriteIfNeeded();
   status.textContent = 'Rewriting draft...';
-  await sendMessage(await currentPayload());
+  await sendMessage(payload);
 
   status.textContent = 'Draft rewritten.';
 }
