@@ -111,4 +111,11 @@ describe('static extension security', () => {
     expect(html).not.toMatch(/\bbase-url\b/);
     expect(source).not.toMatch(/\bbaseUrl\b/);
   });
+
+  it('requires verified providers before enabling popup rewrites', async () => {
+    const source = await readProjectFile('src/popup/popup.js');
+
+    expect(source).toMatch(/getSelectedProviderConfig\(\)\?\.verified/);
+    expect(source).toMatch(/rewriteButton\.disabled = !activeTabId \|\| !providerVerified/);
+  });
 });

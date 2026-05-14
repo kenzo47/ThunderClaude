@@ -44,8 +44,17 @@ function setControlsDisabled(disabled) {
   }
 }
 
+function selectedProviderVerified() {
+  return Boolean(getSelectedProviderConfig()?.verified);
+}
+
 function updateRewriteAvailability() {
-  rewriteButton.disabled = !activeTabId;
+  const providerVerified = selectedProviderVerified();
+  rewriteButton.disabled = !activeTabId || !providerVerified;
+
+  if (activeTabId && !providerVerified) {
+    status.textContent = 'Test this provider in options before rewriting.';
+  }
 }
 
 function createOption(value, label = value) {
@@ -190,6 +199,10 @@ async function currentPayload() {
     throw new Error('Enter a custom model.');
   }
 
+  if (!selectedProviderVerified()) {
+    throw new Error('Test this provider in options before rewriting.');
+  }
+
   if (selectedPreset === 'reply-draft' && !custom) {
     selectionText = await getSelectedText();
 
@@ -293,6 +306,7 @@ for (const button of presetButtons) {
 providerSelect.addEventListener('change', () => {
   renderModels();
   setError(null);
+  updateRewriteAvailability();
 });
 
 modelSelect.addEventListener('change', () => {
