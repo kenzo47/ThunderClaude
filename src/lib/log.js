@@ -1,4 +1,5 @@
-const SECRET_PATTERN = /\b(?:sk-[A-Za-z0-9_-]{8,}|AKIA[0-9A-Z]{16}|AIza[0-9A-Za-z_-]{12,})\b/g;
+const SECRET_PATTERN =
+  /\b(?:sk-(?:ant-)?[A-Za-z0-9_-]{8,}|AKIA[0-9A-Z]{16}|AIza[0-9A-Za-z_-]{12,})\b|Bearer\s+[A-Za-z0-9._~+/=-]{8,}/g;
 const MAX_ERROR_MESSAGE_LENGTH = 160;
 
 function truncate(value, maxLength = MAX_ERROR_MESSAGE_LENGTH) {
