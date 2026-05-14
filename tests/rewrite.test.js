@@ -59,6 +59,7 @@ describe('rewrite orchestrator', () => {
       rewriteComposeDraft(
         {
           action: 'rewrite',
+          allowImageRelocation: true,
           modelId: 'chosen-model',
           preset: 'make-formal',
           providerId: 'test-provider',
@@ -132,32 +133,31 @@ describe('rewrite orchestrator', () => {
     );
   });
 
-  it('fails closed when a fixed segment rewrite invents image tokens', async () => {
+  it('strips invented image tokens from fixed segment rewrites', async () => {
     const thunderbird = createThunderbird(
       '<p>Hello<img src="cid:first"><img src="cid:second"></p>'
     );
     const provider = createProvider('<p>Moved [[TC_IMG_2]]</p>');
 
-    await expect(
-      rewriteComposeDraft(
-        {
-          action: 'rewrite',
-          allowImageRelocation: false,
-          preset: 'make-formal',
-          providerId: 'test-provider',
-          tabId: 42,
-        },
-        {
-          getSettingsImpl: async () => getTestSettings(),
-          getProviderImpl: () => provider,
-          resolveProviderCredential: async () => 'stored-provider-key',
-          thunderbird,
-        }
-      )
-    ).rejects.toMatchObject({
-      code: 'inline_media_token_mismatch',
-    });
-    expect(thunderbird.setCalls).toEqual([]);
+    await rewriteComposeDraft(
+      {
+        action: 'rewrite',
+        allowImageRelocation: false,
+        preset: 'make-formal',
+        providerId: 'test-provider',
+        tabId: 42,
+      },
+      {
+        getSettingsImpl: async () => getTestSettings(),
+        getProviderImpl: () => provider,
+        resolveProviderCredential: async () => 'stored-provider-key',
+        thunderbird,
+      }
+    );
+
+    expect(thunderbird.setCalls[0].details.body).toBe(
+      '<p>Moved </p><img src="cid:first"><img src="cid:second"></p>'
+    );
   });
 
   it('uses custom instructions when supplied', async () => {
@@ -271,6 +271,36 @@ describe('rewrite orchestrator', () => {
     expect(thunderbird.setCalls[0].details.body).toBe('<p>Bonjour</p>');
   });
 
+  it('translates text around inline media without sending media tokens by default', async () => {
+    const providerCalls = [];
+    const thunderbird = createThunderbird('<p>Hello<img src="cid:first">there</p>');
+    const provider = createProvider((input, index) => {
+      expect(input.system).toContain('one text segment');
+      expect(input.user).toContain('Translate the email to French.');
+      expect(input.user).not.toContain('[[TC_IMG_');
+      return index === 0 ? '<p>Bonjour ' : ' la-bas';
+    }, providerCalls);
+
+    await rewriteComposeDraft(
+      {
+        action: 'rewrite',
+        preset: 'translate',
+        providerId: 'test-provider',
+        tabId: 7,
+        targetLanguage: 'French',
+      },
+      {
+        getSettingsImpl: async () => getTestSettings(),
+        getProviderImpl: () => provider,
+        resolveProviderCredential: async () => 'stored-provider-key',
+        thunderbird,
+      }
+    );
+
+    expect(providerCalls).toHaveLength(2);
+    expect(thunderbird.setCalls[0].details.body).toBe('<p>Bonjour <img src="cid:first"> la-bas');
+  });
+
   it('requires a target language for translate', async () => {
     const thunderbird = createThunderbird('<p>Hello</p>');
     const provider = createProvider('<p>Unused</p>');
@@ -354,6 +384,7 @@ describe('rewrite orchestrator', () => {
       rewriteComposeDraft(
         {
           action: 'rewrite',
+          allowImageRelocation: true,
           preset: 'shorten',
           providerId: 'test-provider',
           tabId: 42,

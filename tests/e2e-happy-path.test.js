@@ -192,9 +192,10 @@ describe('end-to-end happy path', () => {
       key: 'sk-test-fake-key-do-not-use',
       model: 'mock-model',
     });
-    expect(providerCalls[0].system).toContain('Preserve every [[TC_IMG_N]] token exactly once.');
+    expect(providerCalls[0].system).toContain('one text segment');
     expect(providerCalls[0].user).toContain('Rewrite the email in a more formal');
-    expect(providerCalls[0].user).toContain('<p>Hello[[TC_IMG_1]]</p>');
+    expect(providerCalls[0].user).toContain('<p>Hello');
+    expect(providerCalls[0].user).not.toContain('[[TC_IMG_1]]');
     expect(thunderbird.setCalls).toEqual([
       {
         details: {

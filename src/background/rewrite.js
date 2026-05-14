@@ -31,6 +31,7 @@ const PRESETS = {
   'fix-grammar': 'Fix grammar, spelling, and clarity while preserving the original meaning.',
 };
 const LOCAL_PROVIDER_IDS = new Set(['local-llms']);
+const INLINE_MEDIA_TOKEN_PATTERN = /\[\[TC_IMG_\d+\]\]/g;
 
 export class RewriteError extends Error {
   constructor(message, { code = 'rewrite_error' } = {}) {
@@ -143,6 +144,10 @@ function buildFixedSegmentPrompt({ instruction, segmentHtml }) {
   };
 }
 
+function stripInlineMediaTokens(html) {
+  return html.replace(INLINE_MEDIA_TOKEN_PATTERN, '');
+}
+
 async function callProviderRewrite({ baseUrl, key, model, prompt, provider, signal }) {
   return provider.rewrite({
     baseUrl,
@@ -210,7 +215,7 @@ async function rewriteWithFixedMedia({
       signal,
     });
 
-    rewrittenSegments.push(sanitizeImpl(rewrittenSegment));
+    rewrittenSegments.push(stripInlineMediaTokens(sanitizeImpl(rewrittenSegment)));
   }
 
   return rewrittenSegments.join('');
@@ -299,7 +304,7 @@ export async function rewriteComposeDraft(message, options = {}) {
   const tokenizedSignature = signatureSplit.signatureHtml
     ? (options.tokenizeImpl ?? tokenize)(signatureSplit.signatureHtml)
     : { media: [], mediaMap: new Map(), text: '' };
-  const allowImageRelocation = message?.allowImageRelocation !== false;
+  const allowImageRelocation = message?.allowImageRelocation === true;
   const resolveProviderCredential =
     options.resolveProviderCredential ?? defaultResolveProviderCredential;
   const key = await resolveProviderCredential(providerId, options);
