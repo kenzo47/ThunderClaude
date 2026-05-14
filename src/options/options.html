@@ -58,7 +58,11 @@
             <span>Enable Ollama access on localhost</span>
           </label>
 
-          <p id="storage-note" class="key-status">Provider keys are stored encrypted by default.</p>
+          <p id="storage-note" class="key-status">
+            Provider keys are encrypted (AES-GCM) with a key kept inside your Thunderbird profile.
+            This protects against accidental disclosure in logs or screenshots; it does not protect
+            against malware with read access to your profile directory.
+          </p>
 
           <label id="key-field" class="field">
             <span>API key</span>

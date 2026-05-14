@@ -120,8 +120,8 @@ function renderProviderForm() {
     provider.id === 'local-llms'
       ? 'Local LLMs use localhost access and do not store a provider key.'
       : config.hasKey
-        ? 'An encrypted key is stored for this provider.'
-        : 'No encrypted key stored.';
+        ? 'A key is stored for this provider, encrypted with a profile-local AES-GCM key.'
+        : 'No key stored for this provider.';
 }
 
 function renderLocalAccess(provider = getSelectedProvider(), config = getSelectedConfig()) {
