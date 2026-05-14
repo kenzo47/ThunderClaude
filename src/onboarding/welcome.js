@@ -25,11 +25,9 @@ const keyField = document.querySelector('#key-field');
 const apiKey = document.querySelector('#api-key');
 const localAccessField = document.querySelector('#local-access-field');
 const localAccess = document.querySelector('#local-access');
-const storageMode = document.querySelector('#storage-mode');
+const storageNote = document.querySelector('#storage-note');
 const storagePhraseField = document.querySelector('#storage-phrase-field');
 const storagePhrase = document.querySelector('#storage-phrase');
-const plainWarning = document.querySelector('#plain-warning');
-const keyModeInputs = [...document.querySelectorAll('[name="key-mode"]')];
 const getStarted = document.querySelector('#get-started');
 const providerNext = document.querySelector('#provider-next');
 const keyBack = document.querySelector('#key-back');
@@ -79,10 +77,6 @@ function getProvider() {
   return snapshot.providers.find((provider) => provider.id === selectedProviderId);
 }
 
-function selectedKeyMode() {
-  return keyModeInputs.find((input) => input.checked)?.value ?? 'encrypted';
-}
-
 function getDefaultModelValue() {
   return defaultModel.value === 'custom' ? customModel.value.trim() : defaultModel.value;
 }
@@ -122,24 +116,19 @@ function renderProviderSettings() {
   customModel.value = '';
   customModelField.hidden = defaultModel.value !== 'custom';
   baseUrlField.hidden = provider.id !== 'openai-compatible';
+  baseUrl.value = provider.defaultBaseUrl || '';
   keyField.hidden = provider.id === 'ollama';
   localAccessField.hidden = provider.id !== 'ollama';
   localAccess.checked = false;
-  storageMode.hidden = provider.id === 'ollama';
-
-  for (const input of keyModeInputs) {
-    input.checked = input.value === 'encrypted';
-  }
+  storageNote.hidden = provider.id === 'ollama';
 
   updateStorageFields();
 }
 
 function updateStorageFields() {
   const provider = getProvider();
-  const keyMode = selectedKeyMode();
 
-  storagePhraseField.hidden = provider.id === 'ollama' || keyMode !== 'encrypted';
-  plainWarning.hidden = provider.id === 'ollama' || keyMode !== 'plain';
+  storagePhraseField.hidden = provider.id === 'ollama';
 }
 
 function providerPayload() {
@@ -166,7 +155,7 @@ function providerPayload() {
     apiKey: apiKey.value.trim(),
     customBaseUrl: provider.id === 'openai-compatible' ? baseUrl.value.trim() : '',
     defaultModel: model,
-    keyMode: provider.id === 'ollama' ? 'none' : selectedKeyMode(),
+    keyMode: provider.id === 'ollama' ? 'none' : 'encrypted',
     localAccessEnabled: provider.id === 'ollama' ? localAccess.checked : false,
     providerId: provider.id,
   };
@@ -238,10 +227,6 @@ storageBack.addEventListener('click', () => {
 defaultModel.addEventListener('change', () => {
   customModelField.hidden = defaultModel.value !== 'custom';
 });
-
-for (const input of keyModeInputs) {
-  input.addEventListener('change', updateStorageFields);
-}
 
 testProviderButton.addEventListener('click', async () => {
   setError(null);

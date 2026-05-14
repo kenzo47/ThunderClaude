@@ -1,5 +1,6 @@
 const OPENAI_COMPATIBLE_PROVIDER_ID = 'openai-compatible';
 const LOOPBACK_HOSTS = new Set(['localhost', '127.0.0.1', '[::1]']);
+const REQUIRED_ENDPOINT_ORIGINS = new Set(['https://api.openai.com/*']);
 
 export function createCustomEndpointOriginPattern(baseUrl) {
   let url;
@@ -32,6 +33,10 @@ export async function ensureCustomEndpointPermission(providerId, baseUrl, permis
   const permission = {
     origins: [origin],
   };
+
+  if (REQUIRED_ENDPOINT_ORIGINS.has(origin)) {
+    return origin;
+  }
 
   if (!permissionsApi?.contains || !permissionsApi?.request) {
     throw new Error('Host permission requests are unavailable in this Thunderbird build.');

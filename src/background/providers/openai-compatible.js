@@ -7,6 +7,7 @@ import {
 
 const DEFAULT_MAX_TOKENS = 4096;
 const CONFIGURED_ENDPOINT_HOST = 'user-configured';
+export const DEFAULT_BASE_URL = 'https://api.openai.com/v1';
 
 function isLoopbackHost(hostname) {
   return hostname === 'localhost' || hostname === '127.0.0.1' || hostname === '[::1]';
@@ -92,6 +93,7 @@ async function createChatCompletion({
 const openaiCompatibleProvider = {
   id: 'openai-compatible',
   label: 'OpenAI-Compatible',
+  defaultBaseUrl: DEFAULT_BASE_URL,
   defaultModel: 'custom',
   modelList: ['custom'],
   keyHelpUrl: 'https://developers.openai.com/api/reference/chat/create',

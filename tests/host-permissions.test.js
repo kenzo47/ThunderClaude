@@ -83,6 +83,12 @@ describe('host permission helper', () => {
     ]);
   });
 
+  it('does not prompt for the required OpenAI origin', async () => {
+    await expect(
+      ensureCustomEndpointPermission('openai-compatible', 'https://api.openai.com/v1')
+    ).resolves.toBe('https://api.openai.com/*');
+  });
+
   it('fails when the user denies the custom endpoint permission', async () => {
     await expect(
       ensureCustomEndpointPermission('openai-compatible', 'https://custom.example.test/v1', {

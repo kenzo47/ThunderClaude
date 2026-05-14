@@ -10,6 +10,7 @@ const BASE_URL = 'https://custom.example.test/v1';
 describe('openai-compatible provider', () => {
   it('matches the provider contract', () => {
     expect(openaiCompatibleProvider).toMatchObject({
+      defaultBaseUrl: 'https://api.openai.com/v1',
       defaultModel: 'custom',
       endpointHost: 'user-configured',
       id: 'openai-compatible',

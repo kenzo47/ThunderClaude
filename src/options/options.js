@@ -19,11 +19,11 @@ const baseUrlField = document.querySelector('#base-url-field');
 const baseUrl = document.querySelector('#base-url');
 const localAccessField = document.querySelector('#local-access-field');
 const localAccess = document.querySelector('#local-access');
+const storageNote = document.querySelector('#storage-note');
 const apiKey = document.querySelector('#api-key');
 const keyStatus = document.querySelector('#key-status');
 const errorMessage = document.querySelector('#error');
 const testButton = document.querySelector('#test-provider');
-const keyModeInputs = [...document.querySelectorAll('[name="key-mode"]')];
 
 let snapshot = null;
 let selectedProviderId = null;
@@ -62,10 +62,6 @@ function getSelectedConfig() {
   return snapshot.providerConfigs[selectedProviderId];
 }
 
-function selectedKeyMode() {
-  return keyModeInputs.find((input) => input.checked)?.value ?? 'encrypted';
-}
-
 function renderProviderList() {
   providerList.replaceChildren(
     ...snapshot.providers.map((provider) => {
@@ -102,17 +98,18 @@ function renderProviderForm() {
   customModel.value = visibleModel === 'custom' ? configuredModel : '';
   customModelField.hidden = visibleModel !== 'custom';
   baseUrlField.hidden = provider.id !== 'openai-compatible';
-  baseUrl.value = config.customBaseUrl;
+  baseUrl.value = config.customBaseUrl || provider.defaultBaseUrl || '';
   localAccessField.hidden = provider.id !== 'ollama';
   localAccess.checked = Boolean(config.localAccessEnabled);
+  storageNote.hidden = provider.id === 'ollama';
   apiKey.value = '';
 
-  for (const radio of keyModeInputs) {
-    radio.checked = radio.value === config.keyMode;
-    radio.disabled = provider.id === 'ollama';
-  }
-
-  keyStatus.textContent = config.hasKey ? 'A key is stored for this provider.' : 'No key stored.';
+  keyStatus.textContent =
+    provider.id === 'ollama'
+      ? 'Ollama uses local access and does not store a provider key.'
+      : config.hasKey
+        ? 'An encrypted key is stored for this provider.'
+        : 'No encrypted key stored.';
 }
 
 function renderSession() {
@@ -141,7 +138,7 @@ function providerPayload() {
     apiKey: apiKey.value.trim(),
     customBaseUrl: provider.id === 'openai-compatible' ? baseUrl.value.trim() : '',
     defaultModel: model,
-    keyMode: provider.id === 'ollama' ? 'none' : selectedKeyMode(),
+    keyMode: provider.id === 'ollama' ? 'none' : 'encrypted',
     localAccessEnabled: provider.id === 'ollama' ? localAccess.checked : false,
     providerId: provider.id,
   };

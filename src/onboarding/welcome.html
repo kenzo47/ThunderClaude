@@ -71,17 +71,9 @@
           <span>Enable local Ollama access on localhost</span>
         </label>
 
-        <fieldset id="storage-mode" class="storage-mode">
-          <legend>Key storage</legend>
-          <label>
-            <input name="key-mode" type="radio" value="encrypted" checked />
-            Encrypted
-          </label>
-          <label>
-            <input name="key-mode" type="radio" value="plain" />
-            Plaintext warning
-          </label>
-        </fieldset>
+        <p id="storage-note">
+          Remote provider keys are encrypted with your storage phrase before they are saved.
+        </p>
 
         <div class="step-actions">
           <button id="key-back" type="button">Back</button>
@@ -99,10 +91,6 @@
           <span>Storage phrase</span>
           <input id="storage-phrase" autocomplete="new-password" type="password" />
         </label>
-        <p id="plain-warning" class="warning" hidden>
-          Plaintext warning mode stores an obfuscated key locally. Anyone with profile access may
-          recover it.
-        </p>
         <div class="step-actions">
           <button id="storage-back" type="button">Back</button>
           <button id="test-provider" class="primary-action" type="button">Test connection</button>

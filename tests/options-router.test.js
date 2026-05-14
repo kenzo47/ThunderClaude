@@ -8,7 +8,7 @@ import {
   unlockOptionsSession,
 } from '../src/background/options-router.js';
 import { getSettingsKey } from '../src/background/settings.js';
-import { getPlainValue, getStorageKeys } from '../src/background/secure-storage.js';
+import { getStorageKeys } from '../src/background/secure-storage.js';
 import { lockSession } from '../src/background/session-key.js';
 
 function createStorageArea() {
@@ -81,6 +81,11 @@ describe('options router', () => {
 
     expect(snapshot.providers.map((provider) => provider.id)).toContain('anthropic');
     expect(snapshot.providers.map((provider) => provider.id)).toContain('openai-compatible');
+    expect(
+      snapshot.providers.find((provider) => provider.id === 'openai-compatible')
+    ).toMatchObject({
+      defaultBaseUrl: 'https://api.openai.com/v1',
+    });
     expect(snapshot.settings.defaultProviderId).toBe('anthropic');
     expect(snapshot.settings.enabledLocalProviderIds).toEqual({});
     expect(snapshot.settings.onboardingComplete).toBe(false);
@@ -108,38 +113,42 @@ describe('options router', () => {
     expect(storageArea.values[getSettingsKey()].keySalt).toEqual(snapshot.session.salt);
   });
 
-  it('saves plaintext provider keys as obfuscated opt-out values', async () => {
-    const snapshot = await saveProviderOptions(
-      {
-        apiKey: 'sk-test-fake-key-do-not-use',
-        defaultModel: 'gpt-5.4',
-        keyMode: 'plain',
-        providerId: 'openai',
-      },
-      { storageArea }
-    );
-
+  it('removes legacy plaintext key entries from snapshots', async () => {
     const keys = getStorageKeys('openai');
-    expect(storageArea.values[keys.plain]).toMatch(/^plain-v1:/);
-    expect(storageArea.values[keys.plain]).not.toContain('sk-test-fake-key-do-not-use');
-    await expect(getPlainValue('openai', { storageArea })).resolves.toBe(
-      'sk-test-fake-key-do-not-use'
-    );
-    expect(snapshot.settings.defaultProviderId).toBe('openai');
+    storageArea.values[keys.legacyPlain] = 'plain-v1:legacy-value';
+
+    const snapshot = await getOptionsSnapshot({ storageArea });
+
+    expect(storageArea.values[keys.legacyPlain]).toBeUndefined();
     expect(snapshot.providerConfigs.openai).toMatchObject({
-      defaultModel: 'gpt-5.4',
-      hasKey: true,
-      keyMode: 'plain',
-      verified: false,
+      hasKey: false,
+      keyMode: 'encrypted',
     });
   });
 
-  it('keeps the existing key mode when no replacement key is entered', async () => {
+  it('rejects plaintext provider key storage', async () => {
+    await expect(
+      saveProviderOptions(
+        {
+          apiKey: 'sk-test-fake-key-do-not-use',
+          defaultModel: 'gpt-5.4',
+          keyMode: 'plain',
+          providerId: 'openai',
+        },
+        { storageArea }
+      )
+    ).rejects.toMatchObject({
+      code: 'invalid_key_mode',
+    });
+  });
+
+  it('keeps an existing encrypted key when no replacement key is entered', async () => {
+    await unlockOptionsSession({ storagePhrase: 'storage phrase' }, { storageArea });
     await saveProviderOptions(
       {
         apiKey: 'sk-test-fake-key-do-not-use',
         defaultModel: 'gpt-5.4',
-        keyMode: 'plain',
+        keyMode: 'encrypted',
         providerId: 'openai',
       },
       { storageArea }
@@ -156,7 +165,7 @@ describe('options router', () => {
 
     expect(snapshot.providerConfigs.openai).toMatchObject({
       hasKey: true,
-      keyMode: 'plain',
+      keyMode: 'encrypted',
     });
   });
 
@@ -202,12 +211,14 @@ describe('options router', () => {
     ).rejects.toThrow('Session key is locked.');
   });
 
-  it('reports missing keys for plaintext connection tests without a stored key', async () => {
+  it('reports missing keys for encrypted connection tests without a stored key', async () => {
+    await unlockOptionsSession({ storagePhrase: 'storage phrase' }, { storageArea });
+
     await expect(
       testProviderOptions(
         {
           defaultModel: 'gpt-5.4',
-          keyMode: 'plain',
+          keyMode: 'encrypted',
           providerId: 'openai',
         },
         { storageArea }
@@ -271,11 +282,12 @@ describe('options router', () => {
   });
 
   it('does not verify saved settings with an unsaved replacement key', async () => {
+    await unlockOptionsSession({ storagePhrase: 'storage phrase' }, { storageArea });
     await saveProviderOptions(
       {
         apiKey: 'sk-test-fake-key-do-not-use',
         defaultModel: 'gpt-5.4',
-        keyMode: 'plain',
+        keyMode: 'encrypted',
         providerId: 'openai',
       },
       { storageArea }
@@ -286,7 +298,7 @@ describe('options router', () => {
         {
           apiKey: 'sk-test-other-key-do-not-use',
           defaultModel: 'gpt-5.4',
-          keyMode: 'plain',
+          keyMode: 'encrypted',
           providerId: 'openai',
         },
         {

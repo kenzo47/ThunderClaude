@@ -3,11 +3,9 @@ import { beforeEach, describe, expect, it } from 'vitest';
 import { deriveKey } from '../src/background/crypto.js';
 import {
   getEncryptedValue,
-  getPlainValue,
   getStorageKeys,
   removeValue,
   setEncryptedValue,
-  setPlainValue,
 } from '../src/background/secure-storage.js';
 
 function createStorageArea() {
@@ -52,25 +50,15 @@ describe('secure storage wrapper', () => {
     );
   });
 
-  it('keeps plaintext opt-out values marked and obfuscated', async () => {
-    const keys = getStorageKeys('ollama');
-
-    await setPlainValue('ollama', 'local token', { storageArea });
-
-    expect(storageArea.values[keys.plain]).toMatch(/^plain-v1:/);
-    expect(storageArea.values[keys.plain]).not.toContain('local token');
-    await expect(getPlainValue('ollama', { storageArea })).resolves.toBe('local token');
-  });
-
-  it('removes encrypted and plaintext entries together', async () => {
+  it('removes encrypted and legacy plaintext entries together', async () => {
     const key = await deriveKey('storage passphrase', new Uint8Array(16).fill(4));
     const keys = getStorageKeys('openai');
 
     await setEncryptedValue('openai', 'encrypted token', key, { storageArea });
-    await setPlainValue('openai', 'plain token', { storageArea });
+    storageArea.values[keys.legacyPlain] = 'plain-v1:legacy-value';
     await removeValue('openai', { storageArea });
 
     expect(storageArea.values[keys.encrypted]).toBeUndefined();
-    expect(storageArea.values[keys.plain]).toBeUndefined();
+    expect(storageArea.values[keys.legacyPlain]).toBeUndefined();
   });
 });

@@ -162,8 +162,7 @@ p {
   gap: 6px;
 }
 
-.field span,
-legend {
+.field span {
   color: var(--muted);
   font-size: 12px;
   font-weight: 750;
@@ -185,26 +184,6 @@ select:focus,
 button:focus-visible {
   border-color: var(--accent);
   box-shadow: 0 0 0 3px oklch(0.82 0.08 252 / 0.34);
-}
-
-.storage-mode {
-  border: 0;
-  display: flex;
-  gap: 12px;
-  margin: 0;
-  padding: 0;
-}
-
-.storage-mode label {
-  align-items: center;
-  display: inline-flex;
-  font-size: 13px;
-  gap: 6px;
-}
-
-.storage-mode input {
-  height: auto;
-  width: auto;
 }
 
 .checkbox-field {

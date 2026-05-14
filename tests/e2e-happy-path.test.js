@@ -249,6 +249,46 @@ describe('end-to-end happy path', () => {
     expect(thunderbird.setCalls).toHaveLength(1);
   });
 
+  it('requires unlock before rewriting with an encrypted saved key', async () => {
+    await configureProvider();
+    await router({
+      action: 'options:lock',
+    });
+
+    await expect(
+      router({
+        action: 'rewrite',
+        preset: 'make-formal',
+        providerId: 'mock-e2e',
+        tabId: 42,
+      })
+    ).resolves.toMatchObject({
+      error: {
+        code: 'session_locked',
+      },
+      ok: false,
+    });
+    expect(thunderbird.setCalls).toEqual([]);
+
+    await router({
+      action: 'options:unlock',
+      storagePhrase: 'storage phrase',
+    });
+    await expect(
+      router({
+        action: 'rewrite',
+        preset: 'make-formal',
+        providerId: 'mock-e2e',
+        tabId: 42,
+      })
+    ).resolves.toMatchObject({
+      ok: true,
+      result: {
+        body: '<p>Formal <img src="cid:first"></p>',
+      },
+    });
+  });
+
   it('leaves the draft untouched when a saved key has not been verified', async () => {
     await configureProvider();
     await router({

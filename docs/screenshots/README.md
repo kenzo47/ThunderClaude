@@ -4,6 +4,6 @@ Screenshots are intentionally deferred until the extension has a packaged build.
 
 Planned files:
 
-- `onboarding.png`: provider setup and storage mode.
+- `onboarding.png`: provider setup and encrypted storage.
 - `popup.png`: compose-action rewrite controls.
 - `options.png`: provider and key settings.

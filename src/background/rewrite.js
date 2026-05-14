@@ -8,7 +8,7 @@ import './providers/openai.js';
 import './providers/openrouter.js';
 
 import { getProvider } from './providers/index.js';
-import { getEncryptedValue, getPlainValue } from './secure-storage.js';
+import { getEncryptedValue } from './secure-storage.js';
 import { getSettings } from './settings.js';
 import { getSessionKey } from './session-key.js';
 import { restore, tokenize } from './inline-media.js';
@@ -215,11 +215,6 @@ async function rewriteWithFixedMedia({
 async function defaultResolveProviderCredential(providerId, options = {}) {
   if (providerId === 'ollama') {
     return '';
-  }
-
-  const plainValue = await getPlainValue(providerId, options);
-  if (plainValue !== null) {
-    return plainValue;
   }
 
   let key;

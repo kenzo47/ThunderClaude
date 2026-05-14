@@ -100,7 +100,7 @@ Screenshots will be added before the first publishable release.
 
 Planned captures:
 
-- `docs/screenshots/onboarding.png`: provider setup and storage mode.
+- `docs/screenshots/onboarding.png`: provider setup and encrypted storage.
 - `docs/screenshots/popup.png`: compose-action rewrite controls.
 - `docs/screenshots/options.png`: provider and key settings.
 

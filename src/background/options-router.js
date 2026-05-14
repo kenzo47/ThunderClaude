@@ -11,16 +11,13 @@ import { getProvider, listProviders } from './providers/index.js';
 import { getSettings, setSettings, updateSettings } from './settings.js';
 import {
   getEncryptedValue,
-  getPlainValue,
   getStorageArea,
   getStorageKeys,
   removeValue,
   setEncryptedValue,
-  setPlainValue,
 } from './secure-storage.js';
 import { getSessionKey, getSessionState, lockSession, unlockSession } from './session-key.js';
 
-const KEY_MODES = new Set(['encrypted', 'plain', 'none']);
 const LOCAL_PROVIDER_IDS = new Set(['ollama']);
 
 export class OptionsError extends Error {
@@ -32,7 +29,7 @@ export class OptionsError extends Error {
 }
 
 function serializeProvider(provider) {
-  return {
+  const serialized = {
     defaultModel: provider.defaultModel,
     endpointHost: provider.endpointHost,
     id: provider.id,
@@ -40,6 +37,12 @@ function serializeProvider(provider) {
     label: provider.label,
     modelList: provider.modelList,
   };
+
+  if (provider.defaultBaseUrl) {
+    serialized.defaultBaseUrl = provider.defaultBaseUrl;
+  }
+
+  return serialized;
 }
 
 async function readStorageKey(storageArea, key) {
@@ -47,22 +50,41 @@ async function readStorageKey(storageArea, key) {
   return result[key];
 }
 
-async function getKeyStatus(providerId, settings, storageArea) {
+async function getKeyStatus(providerId, storageArea) {
   const keys = getStorageKeys(providerId);
   const hasEncrypted = Boolean(await readStorageKey(storageArea, keys.encrypted));
-  const hasPlain = Boolean(await readStorageKey(storageArea, keys.plain));
-  const keyMode =
-    settings.keyModeByProvider[providerId] ??
-    (providerId === 'ollama' ? 'none' : hasPlain ? 'plain' : 'encrypted');
+  const hasLegacyPlain = Boolean(await readStorageKey(storageArea, keys.legacyPlain));
+
+  if (hasLegacyPlain) {
+    await storageArea.remove([keys.legacyPlain]);
+  }
 
   return {
-    hasKey: hasEncrypted || hasPlain,
-    keyMode,
+    hasKey: providerId === 'ollama' ? false : hasEncrypted,
+    keyMode: getExpectedKeyMode(providerId),
   };
 }
 
+function getExpectedKeyMode(providerId) {
+  if (providerId === 'ollama') {
+    return 'none';
+  }
+
+  return 'encrypted';
+}
+
+function assertValidKeyMode(providerId, keyMode) {
+  const expectedKeyMode = getExpectedKeyMode(providerId);
+
+  if (keyMode !== expectedKeyMode) {
+    throw new OptionsError('Provider keys must use encrypted storage.', {
+      code: 'invalid_key_mode',
+    });
+  }
+}
+
 async function resolveProviderKey(providerId, keyMode, apiKey, options = {}) {
-  if (providerId === 'ollama' || keyMode === 'none') {
+  if (providerId === 'ollama') {
     return '';
   }
 
@@ -70,16 +92,7 @@ async function resolveProviderKey(providerId, keyMode, apiKey, options = {}) {
     return apiKey.trim();
   }
 
-  if (keyMode === 'plain') {
-    const plainValue = await getPlainValue(providerId, options);
-    if (plainValue !== null) {
-      return plainValue;
-    }
-
-    throw new OptionsError('Provider API key is not configured.', {
-      code: 'missing_provider_key',
-    });
-  }
+  assertValidKeyMode(providerId, keyMode);
 
   const sessionKey = getSessionKey();
   const encryptedValue = await getEncryptedValue(providerId, sessionKey, options);
@@ -134,9 +147,8 @@ function testMatchesSavedProviderConfig(
     return false;
   }
 
-  const resolvedKeyMode = keyMode ?? (providerId === 'ollama' ? 'none' : 'encrypted');
-  const savedKeyMode =
-    settings.keyModeByProvider[providerId] ?? (providerId === 'ollama' ? 'none' : 'encrypted');
+  const resolvedKeyMode = keyMode ?? getExpectedKeyMode(providerId);
+  const savedKeyMode = getExpectedKeyMode(providerId);
   const savedModel = settings.defaultModelByProvider[providerId] ?? provider.defaultModel;
   const testedModel = defaultModel?.trim() || provider.defaultModel;
   const savedBaseUrl = settings.customBaseUrlByProvider[providerId] ?? '';
@@ -161,7 +173,7 @@ export async function getOptionsSnapshot(options = {}) {
   const providerConfigs = {};
 
   for (const provider of providers) {
-    const keyStatus = await getKeyStatus(provider.id, settings, storageArea);
+    const keyStatus = await getKeyStatus(provider.id, storageArea);
     providerConfigs[provider.id] = getProviderConfig(settings, provider.id, keyStatus);
   }
 
@@ -208,13 +220,8 @@ export async function saveProviderOptions(
   options = {}
 ) {
   const provider = getProvider(providerId);
-  const normalizedKeyMode = keyMode ?? (providerId === 'ollama' ? 'none' : 'encrypted');
-
-  if (!KEY_MODES.has(normalizedKeyMode)) {
-    throw new OptionsError('Choose a valid key storage mode.', {
-      code: 'invalid_key_mode',
-    });
-  }
+  const normalizedKeyMode = keyMode ?? getExpectedKeyMode(providerId);
+  assertValidKeyMode(providerId, normalizedKeyMode);
 
   const storageArea = getStorageArea(options.storageArea);
   const trimmedApiKey = apiKey.trim();
@@ -229,16 +236,12 @@ export async function saveProviderOptions(
     await setEncryptedValue(providerId, trimmedApiKey, getSessionKey(), { storageArea });
   }
 
-  if (trimmedApiKey && normalizedKeyMode === 'plain') {
-    await setPlainValue(providerId, trimmedApiKey, { storageArea });
-  }
-
   await updateSettings(
     (settings) => {
       const storedKeyMode =
         trimmedApiKey || normalizedKeyMode === 'none'
           ? normalizedKeyMode
-          : (settings.keyModeByProvider[providerId] ?? normalizedKeyMode);
+          : getExpectedKeyMode(providerId);
 
       return {
         ...settings,
@@ -283,7 +286,8 @@ export async function testProviderOptions(
   options = {}
 ) {
   const provider = getProvider(providerId);
-  const resolvedKeyMode = keyMode ?? (providerId === 'ollama' ? 'none' : 'encrypted');
+  const resolvedKeyMode = keyMode ?? getExpectedKeyMode(providerId);
+  assertValidKeyMode(providerId, resolvedKeyMode);
   const settings = await getSettings(options);
   assertLocalProviderEnabled(providerId, settings, localAccessEnabled);
   const key = await resolveProviderKey(providerId, resolvedKeyMode, apiKey, options);
@@ -326,7 +330,7 @@ export async function completeOnboarding({ providerId } = {}, options = {}) {
   const storageArea = getStorageArea(options.storageArea);
   const settings = await getSettings(options);
   assertLocalProviderEnabled(providerId, settings, false);
-  const keyStatus = await getKeyStatus(providerId, settings, storageArea);
+  const keyStatus = await getKeyStatus(providerId, storageArea);
   const providerConfigured = LOCAL_PROVIDER_IDS.has(providerId) || keyStatus.hasKey;
 
   if (!providerConfigured) {

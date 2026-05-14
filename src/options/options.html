@@ -71,21 +71,9 @@
             <span>Enable local Ollama access on localhost</span>
           </label>
 
-          <fieldset class="storage-mode">
-            <legend>Key storage</legend>
-            <label>
-              <input name="key-mode" type="radio" value="encrypted" />
-              Encrypted
-            </label>
-            <label>
-              <input name="key-mode" type="radio" value="plain" />
-              Plaintext warning
-            </label>
-            <label>
-              <input name="key-mode" type="radio" value="none" />
-              No key
-            </label>
-          </fieldset>
+          <p id="storage-note" class="key-status">
+            Remote provider keys are stored encrypted and require the storage phrase to unlock.
+          </p>
 
           <label class="field">
             <span>API key</span>
