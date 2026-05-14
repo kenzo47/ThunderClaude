@@ -42,6 +42,22 @@ export function createSalt() {
   return randomBytes(SALT_BYTES);
 }
 
+export function createRawAesKey() {
+  return randomBytes(32);
+}
+
+export async function importAesKey(rawKey) {
+  return getCrypto().subtle.importKey(
+    'raw',
+    rawKey,
+    {
+      name: 'AES-GCM',
+    },
+    false,
+    ['encrypt', 'decrypt']
+  );
+}
+
 async function importPassphrase(passphrase) {
   return getCrypto().subtle.importKey('raw', TEXT_ENCODER.encode(passphrase), 'PBKDF2', false, [
     'deriveKey',

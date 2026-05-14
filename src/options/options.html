@@ -19,23 +19,6 @@
         </div>
       </header>
 
-      <section class="panel phrase-panel">
-        <div>
-          <h2>Storage phrase</h2>
-          <p>Unlock encrypted key storage for this browser session.</p>
-        </div>
-        <form id="phrase-form" class="inline-form">
-          <input
-            id="storage-phrase"
-            autocomplete="current-password"
-            placeholder="Storage phrase"
-            type="password"
-          />
-          <button id="unlock" type="submit">Unlock</button>
-          <button id="lock" type="button">Lock</button>
-        </form>
-      </section>
-
       <section class="settings-layout">
         <nav class="provider-nav" aria-label="Providers">
           <div class="nav-heading">Providers</div>
@@ -61,19 +44,17 @@
             <input id="custom-model" autocomplete="off" />
           </label>
 
-          <label id="base-url-field" class="field" hidden>
+          <label id="base-url-field" class="field">
             <span>Base URL</span>
             <input id="base-url" autocomplete="off" placeholder="https://provider.example/v1" />
           </label>
 
           <label id="local-access-field" class="checkbox-field" hidden>
             <input id="local-access" type="checkbox" />
-            <span>Enable local Ollama access on localhost</span>
+            <span>Enable localhost access for Ollama or LM Studio</span>
           </label>
 
-          <p id="storage-note" class="key-status">
-            Remote provider keys are stored encrypted and require the storage phrase to unlock.
-          </p>
+          <p id="storage-note" class="key-status">Provider keys are stored encrypted by default.</p>
 
           <label class="field">
             <span>API key</span>

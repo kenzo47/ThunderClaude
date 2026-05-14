@@ -1,11 +1,19 @@
 import { extractTextBlocks, fetchProviderJson, registerProvider } from './index.js';
 
 const ENDPOINT_HOST = 'api.anthropic.com';
-const MESSAGES_URL = `https://${ENDPOINT_HOST}/v1/messages`;
+const DEFAULT_BASE_URL = `https://${ENDPOINT_HOST}/v1`;
 const API_VERSION = '2023-06-01';
 const DEFAULT_MAX_TOKENS = 4096;
 
+function createMessagesUrl(baseUrl = DEFAULT_BASE_URL) {
+  const url = new URL(baseUrl);
+  const path = url.pathname.replace(/\/+$/, '');
+  url.pathname = path.endsWith('/messages') ? path : `${path}/messages`.replace(/^\/?/, '/');
+  return url.toString();
+}
+
 async function createMessage({
+  baseUrl,
   key,
   model,
   system,
@@ -14,7 +22,8 @@ async function createMessage({
   fetchImpl,
   maxTokens = DEFAULT_MAX_TOKENS,
 }) {
-  const body = await fetchProviderJson(MESSAGES_URL, {
+  const url = createMessagesUrl(baseUrl);
+  const body = await fetchProviderJson(url, {
     body: JSON.stringify({
       max_tokens: maxTokens,
       messages: [
@@ -26,7 +35,7 @@ async function createMessage({
       model: model ?? anthropicProvider.defaultModel,
       system,
     }),
-    endpointHost: ENDPOINT_HOST,
+    endpointHost: new URL(url).hostname,
     fetchImpl,
     headers: {
       'anthropic-version': API_VERSION,
@@ -45,6 +54,7 @@ const anthropicProvider = {
   label: 'Anthropic',
   defaultModel: 'claude-opus-4-7',
   modelList: ['claude-opus-4-7', 'claude-sonnet-4-6', 'claude-haiku-4-5'],
+  defaultBaseUrl: DEFAULT_BASE_URL,
   keyHelpUrl: 'https://console.anthropic.com/settings/keys',
   endpointHost: ENDPOINT_HOST,
   async testConnection(key, options = {}) {
@@ -62,8 +72,9 @@ const anthropicProvider = {
       return false;
     }
   },
-  async rewrite({ key, model, system, user, signal, fetchImpl }) {
+  async rewrite({ key, baseUrl, model, system, user, signal, fetchImpl }) {
     return createMessage({
+      baseUrl,
       key,
       model,
       system,

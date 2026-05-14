@@ -1,8 +1,15 @@
 import { fetchProviderJson, ProviderError, registerProvider } from './index.js';
 
 const ENDPOINT_HOST = 'api.openai.com';
-const RESPONSES_URL = `https://${ENDPOINT_HOST}/v1/responses`;
+const DEFAULT_BASE_URL = `https://${ENDPOINT_HOST}/v1`;
 const DEFAULT_MAX_OUTPUT_TOKENS = 4096;
+
+function createResponsesUrl(baseUrl = DEFAULT_BASE_URL) {
+  const url = new URL(baseUrl);
+  const path = url.pathname.replace(/\/+$/, '');
+  url.pathname = path.endsWith('/responses') ? path : `${path}/responses`.replace(/^\/?/, '/');
+  return url.toString();
+}
 
 function extractOpenAiText(body) {
   if (!Array.isArray(body?.output)) {
@@ -27,6 +34,7 @@ function extractOpenAiText(body) {
 }
 
 async function createResponse({
+  baseUrl,
   key,
   model,
   system,
@@ -35,7 +43,8 @@ async function createResponse({
   fetchImpl,
   maxOutputTokens = DEFAULT_MAX_OUTPUT_TOKENS,
 }) {
-  const body = await fetchProviderJson(RESPONSES_URL, {
+  const url = createResponsesUrl(baseUrl);
+  const body = await fetchProviderJson(url, {
     body: JSON.stringify({
       input: user,
       instructions: system,
@@ -43,7 +52,7 @@ async function createResponse({
       model: model ?? openaiProvider.defaultModel,
       store: false,
     }),
-    endpointHost: ENDPOINT_HOST,
+    endpointHost: new URL(url).hostname,
     fetchImpl,
     headers: {
       authorization: `Bearer ${key}`,
@@ -59,8 +68,9 @@ async function createResponse({
 const openaiProvider = {
   id: 'openai',
   label: 'OpenAI',
-  defaultModel: 'gpt-5.4',
-  modelList: ['gpt-5.5', 'gpt-5.4', 'gpt-5.4-mini', 'gpt-4.1-nano'],
+  defaultModel: 'gpt-5.5',
+  modelList: ['gpt-5.5', 'gpt-5.4', 'gpt-5.4-mini', 'gpt-5.4-nano', 'gpt-4.1-nano'],
+  defaultBaseUrl: DEFAULT_BASE_URL,
   keyHelpUrl: 'https://platform.openai.com/api-keys',
   endpointHost: ENDPOINT_HOST,
   async testConnection(key, options = {}) {
@@ -78,8 +88,9 @@ const openaiProvider = {
       return false;
     }
   },
-  async rewrite({ key, model, system, user, signal, fetchImpl }) {
+  async rewrite({ key, baseUrl, model, system, user, signal, fetchImpl }) {
     return createResponse({
+      baseUrl,
       key,
       model,
       system,

@@ -4,9 +4,6 @@ import { ensureCustomEndpointPermission } from '../lib/host-permissions.js';
 const thunderbird = globalThis.messenger ?? globalThis.browser;
 
 const status = document.querySelector('#status');
-const phraseForm = document.querySelector('#phrase-form');
-const storagePhraseInput = document.querySelector('#storage-phrase');
-const lockButton = document.querySelector('#lock');
 const providerList = document.querySelector('#provider-list');
 const providerForm = document.querySelector('#provider-form');
 const providerName = document.querySelector('#provider-name');
@@ -15,7 +12,6 @@ const keyHelp = document.querySelector('#key-help');
 const defaultModel = document.querySelector('#default-model');
 const customModelField = document.querySelector('#custom-model-field');
 const customModel = document.querySelector('#custom-model');
-const baseUrlField = document.querySelector('#base-url-field');
 const baseUrl = document.querySelector('#base-url');
 const localAccessField = document.querySelector('#local-access-field');
 const localAccess = document.querySelector('#local-access');
@@ -97,29 +93,23 @@ function renderProviderForm() {
   defaultModel.value = visibleModel;
   customModel.value = visibleModel === 'custom' ? configuredModel : '';
   customModelField.hidden = visibleModel !== 'custom';
-  baseUrlField.hidden = provider.id !== 'openai-compatible';
   baseUrl.value = config.customBaseUrl || provider.defaultBaseUrl || '';
-  localAccessField.hidden = provider.id !== 'ollama';
-  localAccess.checked = Boolean(config.localAccessEnabled);
-  storageNote.hidden = provider.id === 'ollama';
+  localAccessField.hidden = provider.id !== 'local-llms';
+  localAccess.checked = provider.id === 'local-llms' ? config.localAccessEnabled !== false : false;
+  storageNote.hidden = provider.id === 'local-llms';
   apiKey.value = '';
 
   keyStatus.textContent =
-    provider.id === 'ollama'
-      ? 'Ollama uses local access and does not store a provider key.'
+    provider.id === 'local-llms'
+      ? 'Local LLMs use localhost access and do not store a provider key.'
       : config.hasKey
         ? 'An encrypted key is stored for this provider.'
         : 'No encrypted key stored.';
 }
 
-function renderSession() {
-  lockButton.disabled = snapshot.session.locked;
-}
-
 function render() {
   renderProviderList();
   renderProviderForm();
-  renderSession();
 }
 
 function providerPayload() {
@@ -130,16 +120,16 @@ function providerPayload() {
     throw new Error('Enter a custom model.');
   }
 
-  if (provider.id === 'openai-compatible' && !baseUrl.value.trim()) {
+  if (!baseUrl.value.trim()) {
     throw new Error('Enter a base URL.');
   }
 
   return {
     apiKey: apiKey.value.trim(),
-    customBaseUrl: provider.id === 'openai-compatible' ? baseUrl.value.trim() : '',
+    customBaseUrl: baseUrl.value.trim(),
     defaultModel: model,
-    keyMode: provider.id === 'ollama' ? 'none' : 'encrypted',
-    localAccessEnabled: provider.id === 'ollama' ? localAccess.checked : false,
+    keyMode: provider.id === 'local-llms' ? 'none' : 'encrypted',
+    localAccessEnabled: provider.id === 'local-llms' ? localAccess.checked : false,
     providerId: provider.id,
   };
 }
@@ -154,31 +144,6 @@ async function refresh() {
   }
   render();
 }
-
-phraseForm.addEventListener('submit', async (event) => {
-  event.preventDefault();
-  setError(null);
-
-  try {
-    snapshot = await sendMessage({
-      action: 'options:unlock',
-      storagePhrase: storagePhraseInput.value,
-    });
-    storagePhraseInput.value = '';
-    render();
-    setStatus('Encrypted key storage unlocked.');
-  } catch (error) {
-    setError(error.message);
-  }
-});
-
-lockButton.addEventListener('click', async () => {
-  snapshot = await sendMessage({
-    action: 'options:lock',
-  });
-  render();
-  setStatus('Encrypted key storage locked.');
-});
 
 defaultModel.addEventListener('change', () => {
   customModelField.hidden = defaultModel.value !== 'custom';
@@ -240,9 +205,7 @@ testButton.addEventListener('click', async () => {
 
 try {
   await refresh();
-  setStatus(
-    snapshot.session.locked ? 'Settings loaded. Encrypted storage is locked.' : 'Settings loaded.'
-  );
+  setStatus('Settings loaded.');
 } catch (error) {
   warn('ThunderClaude options failed to load.', error);
   setError(error.message);

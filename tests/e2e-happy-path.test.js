@@ -2,13 +2,13 @@ import { beforeEach, describe, expect, it } from 'vitest';
 
 import { ProviderError, registerProvider } from '../src/background/providers/index.js';
 import { createMessageRouter } from '../src/background/rewrite.js';
-import { lockSession } from '../src/background/session-key.js';
 
 let providerCalls = [];
 let testConnectionCalls = [];
 
 registerProvider({
   defaultModel: 'mock-model',
+  defaultBaseUrl: 'https://mock.e2e.local/v1',
   endpointHost: 'mock.e2e.local',
   id: 'mock-e2e',
   keyHelpUrl: 'https://mock.e2e.local/keys',
@@ -83,7 +83,6 @@ describe('end-to-end happy path', () => {
   let router;
 
   beforeEach(() => {
-    lockSession();
     providerCalls = [];
     testConnectionCalls = [];
     storageArea = createStorageArea();
@@ -92,10 +91,6 @@ describe('end-to-end happy path', () => {
   });
 
   async function configureProvider(apiKey = 'sk-test-fake-key-do-not-use') {
-    await router({
-      action: 'options:unlock',
-      storagePhrase: 'storage phrase',
-    });
     await router({
       action: 'options:saveProvider',
       apiKey,
@@ -115,21 +110,7 @@ describe('end-to-end happy path', () => {
     });
   }
 
-  it('unlocks, stores an encrypted key, completes onboarding, and rewrites a draft', async () => {
-    await expect(
-      router({
-        action: 'options:unlock',
-        storagePhrase: 'storage phrase',
-      })
-    ).resolves.toMatchObject({
-      ok: true,
-      result: {
-        session: {
-          locked: false,
-        },
-      },
-    });
-
+  it('stores an encrypted key, completes onboarding, and rewrites a draft', async () => {
     await expect(
       router({
         action: 'options:saveProvider',
@@ -199,7 +180,7 @@ describe('end-to-end happy path', () => {
       {
         key: 'sk-test-fake-key-do-not-use',
         options: {
-          baseUrl: '',
+          baseUrl: 'https://mock.e2e.local/v1',
           fetchImpl: undefined,
           model: 'mock-model',
         },
@@ -247,46 +228,6 @@ describe('end-to-end happy path', () => {
     expect(providerCalls[0].system).toContain('one text segment');
     expect(providerCalls[0].user).not.toContain('[[TC_IMG_');
     expect(thunderbird.setCalls).toHaveLength(1);
-  });
-
-  it('requires unlock before rewriting with an encrypted saved key', async () => {
-    await configureProvider();
-    await router({
-      action: 'options:lock',
-    });
-
-    await expect(
-      router({
-        action: 'rewrite',
-        preset: 'make-formal',
-        providerId: 'mock-e2e',
-        tabId: 42,
-      })
-    ).resolves.toMatchObject({
-      error: {
-        code: 'session_locked',
-      },
-      ok: false,
-    });
-    expect(thunderbird.setCalls).toEqual([]);
-
-    await router({
-      action: 'options:unlock',
-      storagePhrase: 'storage phrase',
-    });
-    await expect(
-      router({
-        action: 'rewrite',
-        preset: 'make-formal',
-        providerId: 'mock-e2e',
-        tabId: 42,
-      })
-    ).resolves.toMatchObject({
-      ok: true,
-      result: {
-        body: '<p>Formal <img src="cid:first"></p>',
-      },
-    });
   });
 
   it('leaves the draft untouched when a saved key has not been verified', async () => {

@@ -89,6 +89,15 @@ describe('host permission helper', () => {
     ).resolves.toBe('https://api.openai.com/*');
   });
 
+  it('does not prompt for required provider origins', async () => {
+    await expect(
+      ensureCustomEndpointPermission('anthropic', 'https://api.anthropic.com/v1')
+    ).resolves.toBe('https://api.anthropic.com/*');
+    await expect(
+      ensureCustomEndpointPermission('local-llms', 'http://localhost:1234/v1')
+    ).resolves.toBe('http://localhost:1234/*');
+  });
+
   it('fails when the user denies the custom endpoint permission', async () => {
     await expect(
       ensureCustomEndpointPermission('openai-compatible', 'https://custom.example.test/v1', {
@@ -102,7 +111,7 @@ describe('host permission helper', () => {
     ).rejects.toThrow('Allow access to the custom endpoint');
   });
 
-  it('does nothing for fixed-host providers', async () => {
+  it('does nothing without a base URL', async () => {
     await expect(
       ensureCustomEndpointPermission('openai', '', {
         async contains() {

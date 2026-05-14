@@ -19,7 +19,7 @@ public release signing is still pending.
 - At least one configured provider:
   - Anthropic, OpenAI, Gemini, MiniMax, DeepSeek, OpenRouter, or an
     OpenAI-compatible endpoint with an API key.
-  - Ollama for local rewriting without a provider key.
+  - Local LLMs through Ollama or LM Studio without a provider key.
 
 ## Development
 
@@ -100,7 +100,7 @@ Screenshots will be added before the first publishable release.
 
 Planned captures:
 
-- `docs/screenshots/onboarding.png`: provider setup and encrypted storage.
+- `docs/screenshots/onboarding.png`: provider setup and encrypted key storage.
 - `docs/screenshots/popup.png`: compose-action rewrite controls.
 - `docs/screenshots/options.png`: provider and key settings.
 

@@ -6,7 +6,6 @@ export const DEFAULT_SETTINGS = Object.freeze({
   defaultProviderId: 'anthropic',
   enabledLocalProviderIds: {},
   keyModeByProvider: {},
-  keySalt: null,
   onboardingComplete: false,
   verifiedProviderIds: {},
 });
@@ -41,7 +40,6 @@ function normalizeSettings(settings = {}) {
       ...DEFAULT_SETTINGS.keyModeByProvider,
       ...(settings.keyModeByProvider ?? {}),
     },
-    keySalt: settings.keySalt ?? DEFAULT_SETTINGS.keySalt,
     onboardingComplete: Boolean(settings.onboardingComplete),
     verifiedProviderIds: {
       ...DEFAULT_SETTINGS.verifiedProviderIds,

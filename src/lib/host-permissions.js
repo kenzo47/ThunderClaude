@@ -1,31 +1,39 @@
-const OPENAI_COMPATIBLE_PROVIDER_ID = 'openai-compatible';
 const LOOPBACK_HOSTS = new Set(['localhost', '127.0.0.1', '[::1]']);
-const REQUIRED_ENDPOINT_ORIGINS = new Set(['https://api.openai.com/*']);
+const REQUIRED_ENDPOINT_ORIGINS = new Set([
+  'http://localhost:11434/*',
+  'http://localhost:1234/*',
+  'https://api.anthropic.com/*',
+  'https://api.deepseek.com/*',
+  'https://api.minimax.io/*',
+  'https://api.openai.com/*',
+  'https://generativelanguage.googleapis.com/*',
+  'https://openrouter.ai/*',
+]);
 
 export function createCustomEndpointOriginPattern(baseUrl) {
   let url;
   try {
     url = new URL(baseUrl);
   } catch {
-    throw new Error('OpenAI-compatible base URL is invalid.');
+    throw new Error('Provider base URL is invalid.');
   }
 
   if (url.search || url.hash) {
-    throw new Error('OpenAI-compatible base URL cannot include query or fragment.');
+    throw new Error('Provider base URL cannot include query or fragment.');
   }
 
   if (
     url.protocol !== 'https:' &&
     !(url.protocol === 'http:' && LOOPBACK_HOSTS.has(url.hostname))
   ) {
-    throw new Error('OpenAI-compatible base URL must use HTTPS unless it is loopback.');
+    throw new Error('Provider base URL must use HTTPS unless it is loopback.');
   }
 
   return `${url.protocol}//${url.host}/*`;
 }
 
 export async function ensureCustomEndpointPermission(providerId, baseUrl, permissionsApi) {
-  if (providerId !== OPENAI_COMPATIBLE_PROVIDER_ID) {
+  if (!providerId || !baseUrl) {
     return null;
   }
 

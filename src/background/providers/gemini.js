@@ -1,12 +1,15 @@
 import { fetchProviderJson, ProviderError, registerProvider } from './index.js';
 
 const ENDPOINT_HOST = 'generativelanguage.googleapis.com';
-const API_VERSION = 'v1beta';
+const DEFAULT_BASE_URL = `https://${ENDPOINT_HOST}/v1beta`;
 const DEFAULT_MAX_OUTPUT_TOKENS = 4096;
 
-function createGenerateContentUrl(model) {
+function createGenerateContentUrl(model, baseUrl = DEFAULT_BASE_URL) {
+  const url = new URL(baseUrl);
+  const path = url.pathname.replace(/\/+$/, '');
   const encodedModel = encodeURIComponent(model).replaceAll('%2F', '/');
-  return `https://${ENDPOINT_HOST}/${API_VERSION}/models/${encodedModel}:generateContent`;
+  url.pathname = `${path}/models/${encodedModel}:generateContent`.replace(/^\/?/, '/');
+  return url.toString();
 }
 
 function extractGeminiText(body) {
@@ -32,6 +35,7 @@ function extractGeminiText(body) {
 }
 
 async function generateContent({
+  baseUrl,
   key,
   model,
   system,
@@ -41,7 +45,7 @@ async function generateContent({
   maxOutputTokens = DEFAULT_MAX_OUTPUT_TOKENS,
 }) {
   const body = await fetchProviderJson(
-    createGenerateContentUrl(model ?? geminiProvider.defaultModel),
+    createGenerateContentUrl(model ?? geminiProvider.defaultModel, baseUrl),
     {
       body: JSON.stringify({
         contents: [
@@ -63,7 +67,8 @@ async function generateContent({
           },
         },
       }),
-      endpointHost: ENDPOINT_HOST,
+      endpointHost: new URL(createGenerateContentUrl(model ?? geminiProvider.defaultModel, baseUrl))
+        .hostname,
       fetchImpl,
       headers: {
         'content-type': 'application/json',
@@ -82,6 +87,7 @@ const geminiProvider = {
   label: 'Google Gemini',
   defaultModel: 'gemini-2.5-pro',
   modelList: ['gemini-2.5-pro', 'gemini-2.5-flash', 'gemini-2.5-flash-lite'],
+  defaultBaseUrl: DEFAULT_BASE_URL,
   keyHelpUrl: 'https://aistudio.google.com/app/apikey',
   endpointHost: ENDPOINT_HOST,
   async testConnection(key, options = {}) {
@@ -99,8 +105,9 @@ const geminiProvider = {
       return false;
     }
   },
-  async rewrite({ key, model, system, user, signal, fetchImpl }) {
+  async rewrite({ key, baseUrl, model, system, user, signal, fetchImpl }) {
     return generateContent({
+      baseUrl,
       key,
       model,
       system,

@@ -39,7 +39,6 @@ function getTestSettings() {
     defaultProviderId: 'test-provider',
     enabledLocalProviderIds: {},
     keyModeByProvider: {},
-    keySalt: null,
     onboardingComplete: true,
     verifiedProviderIds: {
       'test-provider': true,
@@ -358,7 +357,7 @@ describe('rewrite orchestrator', () => {
     });
   });
 
-  it('requires explicit local access before rewriting with Ollama', async () => {
+  it('requires explicit local access before rewriting with Local LLMs', async () => {
     const thunderbird = createThunderbird('<p>Hello</p>');
     const provider = createProvider('<p>Unused</p>');
 
@@ -367,13 +366,13 @@ describe('rewrite orchestrator', () => {
         {
           action: 'rewrite',
           preset: 'shorten',
-          providerId: 'ollama',
+          providerId: 'local-llms',
           tabId: 42,
         },
         {
           getSettingsImpl: async () => ({
             ...getTestSettings(),
-            defaultProviderId: 'ollama',
+            defaultProviderId: 'local-llms',
           }),
           getProviderImpl: () => provider,
           resolveProviderCredential: async () => '',

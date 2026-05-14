@@ -1,8 +1,8 @@
 import './providers/anthropic.js';
 import './providers/deepseek.js';
 import './providers/gemini.js';
+import './providers/local-llms.js';
 import './providers/minimax.js';
-import './providers/ollama.js';
 import './providers/openai-compatible.js';
 import './providers/openai.js';
 import './providers/openrouter.js';
@@ -10,7 +10,6 @@ import './providers/openrouter.js';
 import { getProvider } from './providers/index.js';
 import { getEncryptedValue } from './secure-storage.js';
 import { getSettings } from './settings.js';
-import { getSessionKey } from './session-key.js';
 import { restore, tokenize } from './inline-media.js';
 import { handleOptionsMessage } from './options-router.js';
 import { hasRewriteableText, splitAroundInlineMediaTokens } from '../lib/html-segments.js';
@@ -28,7 +27,7 @@ const PRESETS = {
   expand: 'Expand the email with clear, useful detail while preserving the original intent.',
   'fix-grammar': 'Fix grammar, spelling, and clarity while preserving the original meaning.',
 };
-const LOCAL_PROVIDER_IDS = new Set(['ollama']);
+const LOCAL_PROVIDER_IDS = new Set(['local-llms']);
 
 export class RewriteError extends Error {
   constructor(message, { code = 'rewrite_error' } = {}) {
@@ -213,20 +212,11 @@ async function rewriteWithFixedMedia({
 }
 
 async function defaultResolveProviderCredential(providerId, options = {}) {
-  if (providerId === 'ollama') {
+  if (LOCAL_PROVIDER_IDS.has(providerId)) {
     return '';
   }
 
-  let key;
-  try {
-    key = getSessionKey();
-  } catch (error) {
-    throw new RewriteError(error.message, {
-      code: 'session_locked',
-    });
-  }
-
-  const encryptedValue = await getEncryptedValue(providerId, key, options);
+  const encryptedValue = await getEncryptedValue(providerId, options);
   if (encryptedValue !== null) {
     return encryptedValue;
   }
@@ -240,8 +230,9 @@ function normalizeComposeBody(details) {
   return typeof details?.body === 'string' ? details.body : '';
 }
 
-function resolveBaseUrl(providerId, message, settings) {
-  const savedBaseUrl = settings.customBaseUrlByProvider[providerId] ?? '';
+function resolveBaseUrl(provider, message, settings) {
+  const savedBaseUrl =
+    settings.customBaseUrlByProvider[provider.id] ?? provider.defaultBaseUrl ?? '';
   const requestedBaseUrl = message?.baseUrl?.trim();
 
   if (requestedBaseUrl && requestedBaseUrl !== savedBaseUrl) {
@@ -278,7 +269,7 @@ export async function rewriteComposeDraft(message, options = {}) {
     });
   }
   if (LOCAL_PROVIDER_IDS.has(providerId) && !settings.enabledLocalProviderIds?.[providerId]) {
-    throw new RewriteError('Enable local Ollama access before rewriting with localhost.', {
+    throw new RewriteError('Enable local LLM access before rewriting with localhost.', {
       code: 'local_provider_not_enabled',
     });
   }
@@ -300,7 +291,7 @@ export async function rewriteComposeDraft(message, options = {}) {
   const model = resolveModel(provider, message, settings);
   const allowedCidImageHtml = tokenized.media.map((entry) => entry.outerHTML);
   const sanitizeImpl = options.sanitizeImpl ?? allowlistHtml;
-  const baseUrl = resolveBaseUrl(providerId, message, settings);
+  const baseUrl = resolveBaseUrl(provider, message, settings);
   const rawOutput =
     allowImageRelocation || tokenized.media.length === 0
       ? await rewriteWithRelocatableMedia({

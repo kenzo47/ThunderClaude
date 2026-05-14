@@ -23,6 +23,7 @@
   "permissions": ["compose", "scripting", "storage"],
   "host_permissions": [
     "http://localhost:11434/*",
+    "http://localhost:1234/*",
     "https://api.anthropic.com/*",
     "https://api.deepseek.com/*",
     "https://api.minimax.io/*",

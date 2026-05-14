@@ -7,7 +7,6 @@ const steps = {
   done: document.querySelector('#step-done'),
   key: document.querySelector('#step-key'),
   provider: document.querySelector('#step-provider'),
-  storage: document.querySelector('#step-storage'),
   welcome: document.querySelector('#step-welcome'),
 };
 
@@ -19,26 +18,21 @@ const providerNote = document.querySelector('#provider-note');
 const defaultModel = document.querySelector('#default-model');
 const customModelField = document.querySelector('#custom-model-field');
 const customModel = document.querySelector('#custom-model');
-const baseUrlField = document.querySelector('#base-url-field');
 const baseUrl = document.querySelector('#base-url');
 const keyField = document.querySelector('#key-field');
 const apiKey = document.querySelector('#api-key');
 const localAccessField = document.querySelector('#local-access-field');
 const localAccess = document.querySelector('#local-access');
 const storageNote = document.querySelector('#storage-note');
-const storagePhraseField = document.querySelector('#storage-phrase-field');
-const storagePhrase = document.querySelector('#storage-phrase');
 const getStarted = document.querySelector('#get-started');
 const providerNext = document.querySelector('#provider-next');
 const keyBack = document.querySelector('#key-back');
-const keyNext = document.querySelector('#key-next');
-const storageBack = document.querySelector('#storage-back');
 const testProviderButton = document.querySelector('#test-provider');
 const openOptions = document.querySelector('#open-options');
 const finish = document.querySelector('#finish');
 
 let snapshot = null;
-let selectedProviderId = 'ollama';
+let selectedProviderId = 'local-llms';
 
 function setStatus(message) {
   status.textContent = message;
@@ -92,7 +86,8 @@ function renderProviders() {
       const name = document.createElement('strong');
       const detail = document.createElement('span');
       name.textContent = provider.label;
-      detail.textContent = provider.id === 'ollama' ? 'Free local option' : provider.endpointHost;
+      detail.textContent =
+        provider.id === 'local-llms' ? 'Free local option' : provider.endpointHost;
       button.replaceChildren(name, detail);
       button.addEventListener('click', () => {
         selectedProviderId = provider.id;
@@ -108,27 +103,18 @@ function renderProviderSettings() {
 
   providerTitle.textContent = provider.label;
   providerNote.textContent =
-    provider.id === 'ollama'
-      ? 'Ollama runs locally and does not need a provider key.'
+    provider.id === 'local-llms'
+      ? 'Use http://localhost:11434 for Ollama or http://localhost:1234/v1 for LM Studio.'
       : 'Paste a key for testing and storage.';
   defaultModel.replaceChildren(...provider.modelList.map((model) => createOption(model)));
   defaultModel.value = provider.defaultModel;
   customModel.value = '';
   customModelField.hidden = defaultModel.value !== 'custom';
-  baseUrlField.hidden = provider.id !== 'openai-compatible';
   baseUrl.value = provider.defaultBaseUrl || '';
-  keyField.hidden = provider.id === 'ollama';
-  localAccessField.hidden = provider.id !== 'ollama';
-  localAccess.checked = false;
-  storageNote.hidden = provider.id === 'ollama';
-
-  updateStorageFields();
-}
-
-function updateStorageFields() {
-  const provider = getProvider();
-
-  storagePhraseField.hidden = provider.id === 'ollama';
+  keyField.hidden = provider.id === 'local-llms';
+  localAccessField.hidden = provider.id !== 'local-llms';
+  localAccess.checked = provider.id === 'local-llms';
+  storageNote.hidden = provider.id === 'local-llms';
 }
 
 function providerPayload() {
@@ -139,24 +125,24 @@ function providerPayload() {
     throw new Error('Enter a custom model.');
   }
 
-  if (provider.id === 'openai-compatible' && !baseUrl.value.trim()) {
+  if (!baseUrl.value.trim()) {
     throw new Error('Enter a base URL.');
   }
 
-  if (provider.id !== 'ollama' && !apiKey.value.trim()) {
+  if (provider.id !== 'local-llms' && !apiKey.value.trim()) {
     throw new Error('Enter a provider key.');
   }
 
-  if (provider.id === 'ollama' && !localAccess.checked) {
-    throw new Error('Enable local Ollama access.');
+  if (provider.id === 'local-llms' && !localAccess.checked) {
+    throw new Error('Enable local LLM access.');
   }
 
   return {
     apiKey: apiKey.value.trim(),
-    customBaseUrl: provider.id === 'openai-compatible' ? baseUrl.value.trim() : '',
+    customBaseUrl: baseUrl.value.trim(),
     defaultModel: model,
-    keyMode: provider.id === 'ollama' ? 'none' : 'encrypted',
-    localAccessEnabled: provider.id === 'ollama' ? localAccess.checked : false,
+    keyMode: provider.id === 'local-llms' ? 'none' : 'encrypted',
+    localAccessEnabled: provider.id === 'local-llms' ? localAccess.checked : false,
     providerId: provider.id,
   };
 }
@@ -169,17 +155,6 @@ async function testAndSaveProvider() {
     payload.customBaseUrl,
     thunderbird.permissions
   );
-
-  if (payload.keyMode === 'encrypted') {
-    if (!storagePhrase.value.trim()) {
-      throw new Error('Enter a storage phrase.');
-    }
-
-    await sendMessage({
-      action: 'options:unlock',
-      storagePhrase: storagePhrase.value,
-    });
-  }
 
   await sendMessage({
     action: 'options:saveProvider',
@@ -215,15 +190,6 @@ keyBack.addEventListener('click', () => {
   showStep('provider');
 });
 
-keyNext.addEventListener('click', () => {
-  updateStorageFields();
-  showStep('storage');
-});
-
-storageBack.addEventListener('click', () => {
-  showStep('key');
-});
-
 defaultModel.addEventListener('change', () => {
   customModelField.hidden = defaultModel.value !== 'custom';
 });
@@ -236,7 +202,6 @@ testProviderButton.addEventListener('click', async () => {
   try {
     await testAndSaveProvider();
     apiKey.value = '';
-    storagePhrase.value = '';
     setStatus('Provider verified. Setup is complete.');
     showStep('done');
   } catch (error) {
@@ -260,10 +225,10 @@ try {
     action: 'options:getSnapshot',
   });
   selectedProviderId = snapshot.settings.onboardingComplete
-    ? (snapshot.settings.defaultProviderId ?? 'ollama')
-    : 'ollama';
+    ? (snapshot.settings.defaultProviderId ?? 'local-llms')
+    : 'local-llms';
   if (!snapshot.providers.some((provider) => provider.id === selectedProviderId)) {
-    selectedProviderId = 'ollama';
+    selectedProviderId = 'local-llms';
   }
   renderProviders();
   showStep(snapshot.settings.onboardingComplete ? 'done' : 'welcome');

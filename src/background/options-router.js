@@ -1,14 +1,14 @@
 import './providers/anthropic.js';
 import './providers/deepseek.js';
 import './providers/gemini.js';
+import './providers/local-llms.js';
 import './providers/minimax.js';
-import './providers/ollama.js';
 import './providers/openai-compatible.js';
 import './providers/openai.js';
 import './providers/openrouter.js';
 
 import { getProvider, listProviders } from './providers/index.js';
-import { getSettings, setSettings, updateSettings } from './settings.js';
+import { getSettings, updateSettings } from './settings.js';
 import {
   getEncryptedValue,
   getStorageArea,
@@ -16,9 +16,8 @@ import {
   removeValue,
   setEncryptedValue,
 } from './secure-storage.js';
-import { getSessionKey, getSessionState, lockSession, unlockSession } from './session-key.js';
 
-const LOCAL_PROVIDER_IDS = new Set(['ollama']);
+const LOCAL_PROVIDER_IDS = new Set(['local-llms']);
 
 export class OptionsError extends Error {
   constructor(message, { code = 'options_error' } = {}) {
@@ -42,6 +41,10 @@ function serializeProvider(provider) {
     serialized.defaultBaseUrl = provider.defaultBaseUrl;
   }
 
+  if (provider.alternateBaseUrls) {
+    serialized.alternateBaseUrls = provider.alternateBaseUrls;
+  }
+
   return serialized;
 }
 
@@ -60,13 +63,13 @@ async function getKeyStatus(providerId, storageArea) {
   }
 
   return {
-    hasKey: providerId === 'ollama' ? false : hasEncrypted,
+    hasKey: LOCAL_PROVIDER_IDS.has(providerId) ? false : hasEncrypted,
     keyMode: getExpectedKeyMode(providerId),
   };
 }
 
 function getExpectedKeyMode(providerId) {
-  if (providerId === 'ollama') {
+  if (LOCAL_PROVIDER_IDS.has(providerId)) {
     return 'none';
   }
 
@@ -84,7 +87,7 @@ function assertValidKeyMode(providerId, keyMode) {
 }
 
 async function resolveProviderKey(providerId, keyMode, apiKey, options = {}) {
-  if (providerId === 'ollama') {
+  if (LOCAL_PROVIDER_IDS.has(providerId)) {
     return '';
   }
 
@@ -94,8 +97,7 @@ async function resolveProviderKey(providerId, keyMode, apiKey, options = {}) {
 
   assertValidKeyMode(providerId, keyMode);
 
-  const sessionKey = getSessionKey();
-  const encryptedValue = await getEncryptedValue(providerId, sessionKey, options);
+  const encryptedValue = await getEncryptedValue(providerId, options);
   if (encryptedValue !== null) {
     return encryptedValue;
   }
@@ -107,12 +109,15 @@ async function resolveProviderKey(providerId, keyMode, apiKey, options = {}) {
 
 function getProviderConfig(settings, providerId, keyStatus) {
   return {
-    customBaseUrl: settings.customBaseUrlByProvider[providerId] ?? '',
+    customBaseUrl:
+      settings.customBaseUrlByProvider[providerId] ?? getProvider(providerId).defaultBaseUrl ?? '',
     defaultModel:
       settings.defaultModelByProvider[providerId] ?? getProvider(providerId).defaultModel,
     hasKey: keyStatus.hasKey,
     keyMode: keyStatus.keyMode,
-    localAccessEnabled: Boolean(settings.enabledLocalProviderIds[providerId]),
+    localAccessEnabled: LOCAL_PROVIDER_IDS.has(providerId)
+      ? settings.enabledLocalProviderIds[providerId] !== false
+      : false,
     verified: Boolean(settings.verifiedProviderIds[providerId]),
   };
 }
@@ -126,7 +131,7 @@ function assertLocalProviderEnabled(providerId, settings, localAccessEnabled) {
     return;
   }
 
-  throw new OptionsError('Enable local Ollama access before connecting to localhost.', {
+  throw new OptionsError('Enable local LLM access before connecting to localhost.', {
     code: 'local_provider_not_enabled',
   });
 }
@@ -151,8 +156,9 @@ function testMatchesSavedProviderConfig(
   const savedKeyMode = getExpectedKeyMode(providerId);
   const savedModel = settings.defaultModelByProvider[providerId] ?? provider.defaultModel;
   const testedModel = defaultModel?.trim() || provider.defaultModel;
-  const savedBaseUrl = settings.customBaseUrlByProvider[providerId] ?? '';
-  const testedBaseUrl = providerId === 'openai-compatible' ? customBaseUrl.trim() : '';
+  const savedBaseUrl =
+    settings.customBaseUrlByProvider[providerId] ?? provider.defaultBaseUrl ?? '';
+  const testedBaseUrl = customBaseUrl.trim() || provider.defaultBaseUrl || '';
   const savedLocalAccess = Boolean(settings.enabledLocalProviderIds[providerId]);
   const testedLocalAccess = LOCAL_PROVIDER_IDS.has(providerId)
     ? Boolean(localAccessEnabled)
@@ -180,32 +186,8 @@ export async function getOptionsSnapshot(options = {}) {
   return {
     providerConfigs,
     providers,
-    session: getSessionState(),
     settings,
   };
-}
-
-export async function unlockOptionsSession({ storagePhrase } = {}, options = {}) {
-  if (!storagePhrase?.trim()) {
-    throw new OptionsError('Enter a storage phrase.', {
-      code: 'missing_storage_phrase',
-    });
-  }
-
-  const settings = await getSettings(options);
-  const session = await unlockSession(storagePhrase, settings.keySalt);
-
-  if (!settings.keySalt) {
-    await setSettings(
-      {
-        ...settings,
-        keySalt: session.salt,
-      },
-      options
-    );
-  }
-
-  return getOptionsSnapshot(options);
 }
 
 export async function saveProviderOptions(
@@ -233,7 +215,7 @@ export async function saveProviderOptions(
   }
 
   if (trimmedApiKey && normalizedKeyMode === 'encrypted') {
-    await setEncryptedValue(providerId, trimmedApiKey, getSessionKey(), { storageArea });
+    await setEncryptedValue(providerId, trimmedApiKey, { storageArea });
   }
 
   await updateSettings(
@@ -247,7 +229,7 @@ export async function saveProviderOptions(
         ...settings,
         customBaseUrlByProvider: {
           ...settings.customBaseUrlByProvider,
-          [providerId]: providerId === 'openai-compatible' ? customBaseUrl.trim() : '',
+          [providerId]: customBaseUrl.trim() || provider.defaultBaseUrl || '',
         },
         defaultModelByProvider: {
           ...settings.defaultModelByProvider,
@@ -292,7 +274,7 @@ export async function testProviderOptions(
   assertLocalProviderEnabled(providerId, settings, localAccessEnabled);
   const key = await resolveProviderKey(providerId, resolvedKeyMode, apiKey, options);
   const connected = await provider.testConnection(key, {
-    baseUrl: customBaseUrl?.trim(),
+    baseUrl: customBaseUrl?.trim() || provider.defaultBaseUrl || '',
     fetchImpl: options.fetchImpl,
     model: defaultModel?.trim() || provider.defaultModel,
   });
@@ -362,15 +344,6 @@ export async function completeOnboarding({ providerId } = {}, options = {}) {
 
 export async function handleOptionsMessage(message, options = {}) {
   if (message?.action === 'options:getSnapshot') {
-    return getOptionsSnapshot(options);
-  }
-
-  if (message?.action === 'options:unlock') {
-    return unlockOptionsSession(message, options);
-  }
-
-  if (message?.action === 'options:lock') {
-    lockSession();
     return getOptionsSnapshot(options);
   }
 

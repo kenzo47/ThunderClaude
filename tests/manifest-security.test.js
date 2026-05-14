@@ -4,6 +4,7 @@ import { describe, expect, it } from 'vitest';
 
 const PROVIDER_HOST_PERMISSIONS = [
   'http://localhost:11434/*',
+  'http://localhost:1234/*',
   'https://api.anthropic.com/*',
   'https://api.deepseek.com/*',
   'https://api.minimax.io/*',

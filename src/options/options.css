@@ -76,19 +76,6 @@ p {
   padding: 16px;
 }
 
-.phrase-panel {
-  align-items: end;
-  display: grid;
-  gap: 14px;
-  grid-template-columns: minmax(0, 1fr) auto;
-}
-
-.inline-form {
-  display: grid;
-  gap: 8px;
-  grid-template-columns: 220px auto auto;
-}
-
 .settings-layout {
   align-items: start;
   display: grid;
@@ -264,12 +251,7 @@ select:disabled {
     padding: 16px;
   }
 
-  .phrase-panel,
   .settings-layout {
-    grid-template-columns: 1fr;
-  }
-
-  .inline-form {
     grid-template-columns: 1fr;
   }
 }

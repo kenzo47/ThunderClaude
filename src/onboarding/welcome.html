@@ -32,7 +32,7 @@
       <section id="step-provider" class="panel wizard-step" hidden>
         <div class="step-heading">
           <h2>Provider</h2>
-          <p>Ollama is local and does not need a key.</p>
+          <p>Local LLMs can use Ollama or LM Studio without a provider key.</p>
         </div>
         <div id="provider-grid" class="provider-grid"></div>
         <div class="step-actions">
@@ -56,7 +56,7 @@
           <input id="custom-model" autocomplete="off" />
         </label>
 
-        <label id="base-url-field" class="field" hidden>
+        <label id="base-url-field" class="field">
           <span>Base URL</span>
           <input id="base-url" autocomplete="off" placeholder="https://provider.example/v1" />
         </label>
@@ -67,32 +67,14 @@
         </label>
 
         <label id="local-access-field" class="checkbox-field" hidden>
-          <input id="local-access" type="checkbox" />
-          <span>Enable local Ollama access on localhost</span>
+          <input id="local-access" type="checkbox" checked />
+          <span>Enable localhost access for Ollama or LM Studio</span>
         </label>
 
-        <p id="storage-note">
-          Remote provider keys are encrypted with your storage phrase before they are saved.
-        </p>
+        <p id="storage-note">Provider keys are stored encrypted by default.</p>
 
         <div class="step-actions">
           <button id="key-back" type="button">Back</button>
-          <button id="key-next" class="primary-action" type="button">Continue</button>
-        </div>
-      </section>
-
-      <section id="step-storage" class="panel wizard-step" hidden>
-        <h2>Encrypted storage</h2>
-        <p id="storage-copy">
-          Set a storage phrase for encrypted provider keys. You will enter it again after the
-          background session locks.
-        </p>
-        <label id="storage-phrase-field" class="field">
-          <span>Storage phrase</span>
-          <input id="storage-phrase" autocomplete="new-password" type="password" />
-        </label>
-        <div class="step-actions">
-          <button id="storage-back" type="button">Back</button>
           <button id="test-provider" class="primary-action" type="button">Test connection</button>
         </div>
       </section>

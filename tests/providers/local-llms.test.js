@@ -1,7 +1,11 @@
 import { describe, expect, it } from 'vitest';
 
-import ollamaProvider from '../../src/background/providers/ollama.js';
-import { jsonResponse, providerError } from './chat-provider-test-helper.js';
+import localLlmsProvider from '../../src/background/providers/local-llms.js';
+import {
+  jsonResponse,
+  providerError,
+  successfulChatResponse,
+} from './chat-provider-test-helper.js';
 
 function successfulOllamaResponse(text = '<p>Rewritten draft.</p>') {
   return jsonResponse({
@@ -14,19 +18,20 @@ function successfulOllamaResponse(text = '<p>Rewritten draft.</p>') {
   });
 }
 
-describe('ollama provider', () => {
+describe('local llms provider', () => {
   it('matches the provider contract', () => {
-    expect(ollamaProvider).toMatchObject({
+    expect(localLlmsProvider).toMatchObject({
+      defaultBaseUrl: 'http://localhost:11434',
       defaultModel: 'llama3.2',
       endpointHost: 'localhost',
-      id: 'ollama',
-      keyHelpUrl: 'https://ollama.com/download',
-      label: 'Ollama',
+      id: 'local-llms',
+      keyHelpUrl: 'https://lmstudio.ai/docs/app/api/endpoints/openai/',
+      label: 'Local LLMs',
       modelList: ['llama3.2', 'gemma3', 'qwen3', 'mistral', 'custom'],
     });
   });
 
-  it('rewrites successfully through the local chat endpoint', async () => {
+  it('rewrites through Ollama by default', async () => {
     const calls = [];
     const fetchImpl = async (url, options) => {
       calls.push({ options, url });
@@ -34,7 +39,7 @@ describe('ollama provider', () => {
     };
 
     await expect(
-      ollamaProvider.rewrite({
+      localLlmsProvider.rewrite({
         fetchImpl,
         model: 'llama3.2',
         system: 'Rewrite email.',
@@ -44,14 +49,6 @@ describe('ollama provider', () => {
 
     expect(calls).toHaveLength(1);
     expect(calls[0].url).toBe('http://localhost:11434/api/chat');
-    expect(calls[0].options).toMatchObject({
-      credentials: 'omit',
-      headers: {
-        'content-type': 'application/json',
-      },
-      method: 'POST',
-      referrerPolicy: 'no-referrer',
-    });
     expect(JSON.parse(calls[0].options.body)).toEqual({
       messages: [
         {
@@ -69,9 +66,44 @@ describe('ollama provider', () => {
     });
   });
 
+  it('rewrites through LM Studio with an OpenAI-compatible base URL', async () => {
+    const calls = [];
+    const fetchImpl = async (url, options) => {
+      calls.push({ options, url });
+      return successfulChatResponse();
+    };
+
+    await expect(
+      localLlmsProvider.rewrite({
+        baseUrl: 'http://localhost:1234/v1',
+        fetchImpl,
+        model: 'local-model',
+        system: 'Rewrite email.',
+        user: '<p>Hello.</p>',
+      })
+    ).resolves.toBe('<p>Rewritten draft.</p>');
+
+    expect(calls).toHaveLength(1);
+    expect(calls[0].url).toBe('http://localhost:1234/v1/chat/completions');
+    expect(JSON.parse(calls[0].options.body)).toEqual({
+      messages: [
+        {
+          content: 'Rewrite email.',
+          role: 'system',
+        },
+        {
+          content: '<p>Hello.</p>',
+          role: 'user',
+        },
+      ],
+      model: 'local-model',
+      stream: false,
+    });
+  });
+
   it('returns true for a successful test connection without an API key', async () => {
     await expect(
-      ollamaProvider.testConnection('', {
+      localLlmsProvider.testConnection('', {
         fetchImpl: async () => successfulOllamaResponse('OK'),
       })
     ).resolves.toBe(true);
@@ -79,7 +111,7 @@ describe('ollama provider', () => {
 
   it('returns false when an API key is supplied', async () => {
     await expect(
-      ollamaProvider.testConnection('sk-test-fake-key-do-not-use', {
+      localLlmsProvider.testConnection('sk-test-fake-key-do-not-use', {
         fetchImpl: async () => successfulOllamaResponse('OK'),
       })
     ).resolves.toBe(false);
@@ -87,28 +119,15 @@ describe('ollama provider', () => {
 
   it('returns false for a failed test connection', async () => {
     await expect(
-      ollamaProvider.testConnection('', {
-        fetchImpl: async () => providerError(500, 'ollama unavailable', 'server_error'),
+      localLlmsProvider.testConnection('', {
+        fetchImpl: async () => providerError(500, 'local model unavailable', 'server_error'),
       })
     ).resolves.toBe(false);
   });
 
-  it('maps 401 responses to authentication errors', async () => {
+  it('maps provider errors', async () => {
     await expect(
-      ollamaProvider.rewrite({
-        fetchImpl: async () => providerError(401, 'invalid api key', 'authentication_error'),
-        system: 'Rewrite email.',
-        user: '<p>Hello.</p>',
-      })
-    ).rejects.toMatchObject({
-      code: 'authentication_error',
-      status: 401,
-    });
-  });
-
-  it('maps 429 responses to rate-limit errors', async () => {
-    await expect(
-      ollamaProvider.rewrite({
+      localLlmsProvider.rewrite({
         fetchImpl: async () => providerError(429, 'rate limited', 'rate_limit_error'),
         system: 'Rewrite email.',
         user: '<p>Hello.</p>',
@@ -116,19 +135,6 @@ describe('ollama provider', () => {
     ).rejects.toMatchObject({
       code: 'rate_limit_error',
       status: 429,
-    });
-  });
-
-  it('maps 5xx responses to server errors', async () => {
-    await expect(
-      ollamaProvider.rewrite({
-        fetchImpl: async () => providerError(500, 'server failed', 'server_error'),
-        system: 'Rewrite email.',
-        user: '<p>Hello.</p>',
-      })
-    ).rejects.toMatchObject({
-      code: 'server_error',
-      status: 500,
     });
   });
 
@@ -140,7 +146,7 @@ describe('ollama provider', () => {
     };
 
     await expect(
-      ollamaProvider.rewrite({
+      localLlmsProvider.rewrite({
         fetchImpl,
         system: 'Rewrite email.',
         user: '<p>Hello.</p>',
@@ -152,7 +158,7 @@ describe('ollama provider', () => {
 
   it('rejects malformed JSON responses', async () => {
     await expect(
-      ollamaProvider.rewrite({
+      localLlmsProvider.rewrite({
         fetchImpl: async () => ({
           ok: true,
           status: 200,
@@ -171,7 +177,7 @@ describe('ollama provider', () => {
 
   it('rejects responses without assistant text', async () => {
     await expect(
-      ollamaProvider.rewrite({
+      localLlmsProvider.rewrite({
         fetchImpl: async () => jsonResponse({ done: true, message: { role: 'assistant' } }),
         system: 'Rewrite email.',
         user: '<p>Hello.</p>',

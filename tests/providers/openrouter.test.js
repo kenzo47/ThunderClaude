@@ -6,12 +6,18 @@ import { defineChatProviderBehaviorTests } from './chat-provider-test-helper.js'
 describe('openrouter provider', () => {
   it('matches the provider contract', () => {
     expect(openrouterProvider).toMatchObject({
-      defaultModel: 'openai/gpt-5.4',
+      defaultModel: 'openai/gpt-5.5',
       endpointHost: 'openrouter.ai',
       id: 'openrouter',
       keyHelpUrl: 'https://openrouter.ai/settings/keys',
       label: 'OpenRouter',
-      modelList: ['openai/gpt-5.4', 'anthropic/claude-opus-4.7', 'google/gemini-2.5-pro', 'custom'],
+      modelList: [
+        'openai/gpt-5.5',
+        'openai/gpt-5.4',
+        'anthropic/claude-opus-4.7',
+        'google/gemini-2.5-pro',
+        'custom',
+      ],
     });
   });
 
