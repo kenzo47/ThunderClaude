@@ -6,7 +6,7 @@ const handleRuntimeMessage = createMessageRouter({ thunderbird });
 const popupWindowByComposeTab = new Map();
 
 async function openComposePopup(tab) {
-  if (!tab?.id || !thunderbird.windows?.create) {
+  if (!Number.isInteger(tab?.id) || !thunderbird.windows?.create) {
     return;
   }
 

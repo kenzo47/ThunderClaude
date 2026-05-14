@@ -48,16 +48,36 @@ function setControlsDisabled(disabled) {
   }
 }
 
+function providerIsVerified(providerId) {
+  return Boolean(
+    optionsSnapshot?.providerConfigs?.[providerId]?.verified ||
+    optionsSnapshot?.settings?.verifiedProviderIds?.[providerId]
+  );
+}
+
 function selectedProviderVerified() {
-  return Boolean(getSelectedProviderConfig()?.verified);
+  return providerIsVerified(getSelectedProvider()?.id);
+}
+
+function findVerifiedProviderId() {
+  const defaultProviderId = optionsSnapshot?.settings?.defaultProviderId;
+  if (defaultProviderId && providerIsVerified(defaultProviderId)) {
+    return defaultProviderId;
+  }
+
+  return providers.find((provider) => providerIsVerified(provider.id))?.id ?? null;
 }
 
 function updateRewriteAvailability() {
   const providerVerified = selectedProviderVerified();
   rewriteButton.disabled = !activeTabId || !providerVerified;
 
-  if (activeTabId && !providerVerified) {
+  if (!activeTabId) {
+    status.textContent = 'Open a compose window to use ThunderClaude.';
+  } else if (!providerVerified) {
     status.textContent = 'Test this provider in options before rewriting.';
+  } else {
+    status.textContent = 'Ready to rewrite this draft.';
   }
 }
 
@@ -110,17 +130,12 @@ function renderProviders() {
     ...providers.map((provider) => createOption(provider.id, provider.label))
   );
 
-  if (optionsSnapshot?.settings?.defaultProviderId) {
-    providerSelect.value = optionsSnapshot.settings.defaultProviderId;
-  }
+  providerSelect.value =
+    findVerifiedProviderId() ?? optionsSnapshot?.settings?.defaultProviderId ?? providers[0]?.id;
 }
 
 function getSelectedProvider() {
   return providers.find((provider) => provider.id === providerSelect.value) ?? providers[0];
-}
-
-function getSelectedProviderConfig() {
-  return optionsSnapshot?.providerConfigs?.[getSelectedProvider().id];
 }
 
 function renderModels() {
@@ -222,11 +237,12 @@ async function currentPayload() {
 async function detectComposeTab() {
   const requestedTabIdParam = new URL(globalThis.location.href).searchParams.get('composeTabId');
   const requestedTabId = requestedTabIdParam === null ? null : Number(requestedTabIdParam);
-  const [tab] = Number.isInteger(requestedTabId)
-    ? [{ id: requestedTabId }]
-    : await thunderbird.tabs.query({ active: true, currentWindow: true });
+  const [tab] =
+    Number.isInteger(requestedTabId) && requestedTabId >= 0
+      ? [{ id: requestedTabId }]
+      : await thunderbird.tabs.query({ active: true, currentWindow: true });
 
-  if (!tab?.id) {
+  if (!Number.isInteger(tab?.id)) {
     throw new Error('Open a compose window to use ThunderClaude.');
   }
 
@@ -234,7 +250,6 @@ async function detectComposeTab() {
   activeTabId = tab.id;
   composeMode.hidden = false;
   composeMode.textContent = details.isPlainText ? 'Plain text' : 'HTML';
-  status.textContent = 'Ready to rewrite this draft.';
   updateRewriteAvailability();
 }
 

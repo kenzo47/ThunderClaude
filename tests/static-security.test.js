@@ -115,7 +115,8 @@ describe('static extension security', () => {
   it('requires verified providers before enabling popup rewrites', async () => {
     const source = await readProjectFile('src/popup/popup.js');
 
-    expect(source).toMatch(/getSelectedProviderConfig\(\)\?\.verified/);
+    expect(source).toMatch(/providerIsVerified\(getSelectedProvider\(\)\?\.id\)/);
+    expect(source).toMatch(/optionsSnapshot\?\.providerConfigs\?\.\[providerId\]\?\.verified/);
     expect(source).toMatch(/rewriteButton\.disabled = !activeTabId \|\| !providerVerified/);
   });
 });
