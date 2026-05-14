@@ -95,4 +95,10 @@ describe('static extension security', () => {
 
     expect(source).not.toMatch(/\bFALLBACK_PROVIDERS\b/);
   });
+
+  it('hides popup rewrite controls until onboarding is verified', async () => {
+    const html = await readProjectFile('src/popup/popup.html');
+
+    expect(html).toMatch(/<form[^>]+id="rewrite-form"[^>]+hidden/);
+  });
 });

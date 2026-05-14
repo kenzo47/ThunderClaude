@@ -303,6 +303,7 @@ const popupCanContinue = await loadOptionsSnapshot();
 if (popupCanContinue) {
   renderProviders();
   renderModels();
+  form.hidden = false;
 }
 
 for (const button of presetButtons) {
