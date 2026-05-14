@@ -21,7 +21,7 @@ function successfulOllamaResponse(text = '<p>Rewritten draft.</p>') {
 describe('local llms provider', () => {
   it('matches the provider contract', () => {
     expect(localLlmsProvider).toMatchObject({
-      defaultBaseUrl: 'http://localhost:11434',
+      defaultBaseUrl: 'http://localhost:11434/api',
       defaultModel: 'llama3.2',
       endpointHost: 'localhost',
       id: 'local-llms',
@@ -29,6 +29,10 @@ describe('local llms provider', () => {
       label: 'Local LLMs',
       modelList: ['llama3.2', 'gemma3', 'qwen3', 'mistral', 'custom'],
     });
+    expect(localLlmsProvider.alternateBaseUrls).toEqual([
+      'http://localhost:11434/api',
+      'http://localhost:1234/v1',
+    ]);
   });
 
   it('rewrites through Ollama by default', async () => {
@@ -64,6 +68,26 @@ describe('local llms provider', () => {
       stream: false,
       think: false,
     });
+  });
+
+  it('accepts the legacy Ollama origin as a base URL', async () => {
+    const calls = [];
+    const fetchImpl = async (url, options) => {
+      calls.push({ options, url });
+      return successfulOllamaResponse();
+    };
+
+    await expect(
+      localLlmsProvider.rewrite({
+        baseUrl: 'http://localhost:11434',
+        fetchImpl,
+        model: 'llama3.2',
+        system: 'Rewrite email.',
+        user: '<p>Hello.</p>',
+      })
+    ).resolves.toBe('<p>Rewritten draft.</p>');
+
+    expect(calls[0].url).toBe('http://localhost:11434/api/chat');
   });
 
   it('rewrites through LM Studio with an OpenAI-compatible base URL', async () => {
@@ -154,6 +178,18 @@ describe('local llms provider', () => {
         fetchImpl: async () => providerError(500, 'local model unavailable', 'server_error'),
       })
     ).resolves.toBe(false);
+  });
+
+  it('throws failed test connection errors when requested', async () => {
+    await expect(
+      localLlmsProvider.testConnection('', {
+        fetchImpl: async () => providerError(500, 'local server failed', 'server_error'),
+        throwOnError: true,
+      })
+    ).rejects.toMatchObject({
+      code: 'server_error',
+      status: 500,
+    });
   });
 
   it('maps provider errors', async () => {

@@ -28,7 +28,7 @@ let selectedProviderId = null;
 function isOllamaBaseUrl(value) {
   try {
     const url = new URL(value);
-    return url.hostname === 'localhost' && url.port === '11434';
+    return ['localhost', '127.0.0.1', '[::1]'].includes(url.hostname) && url.port === '11434';
   } catch {
     return false;
   }
@@ -217,7 +217,7 @@ testButton.addEventListener('click', async () => {
         ? 'Connection test passed.'
         : result.connected
           ? 'Connection test passed for unsaved settings.'
-          : 'Connection test failed.'
+          : `Connection test failed${result.error?.message ? `: ${result.error.message}` : '.'}`
     );
   } catch (error) {
     setError(error.message);

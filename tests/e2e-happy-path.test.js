@@ -183,6 +183,7 @@ describe('end-to-end happy path', () => {
           baseUrl: 'https://mock.e2e.local/v1',
           fetchImpl: undefined,
           model: 'mock-model',
+          throwOnError: true,
         },
       },
     ]);

@@ -37,7 +37,7 @@ let selectedProviderId = 'local-llms';
 function isOllamaBaseUrl(value) {
   try {
     const url = new URL(value);
-    return url.hostname === 'localhost' && url.port === '11434';
+    return ['localhost', '127.0.0.1', '[::1]'].includes(url.hostname) && url.port === '11434';
   } catch {
     return false;
   }
@@ -113,7 +113,7 @@ function renderProviderSettings() {
   providerTitle.textContent = provider.label;
   providerNote.textContent =
     provider.id === 'local-llms'
-      ? 'Use http://localhost:11434 for Ollama or http://localhost:1234/v1 for LM Studio.'
+      ? 'Use http://localhost:11434/api for Ollama or http://localhost:1234/v1 for LM Studio.'
       : 'Paste a key for testing and storage.';
   defaultModel.replaceChildren(...provider.modelList.map((model) => createOption(model)));
   defaultModel.value = provider.defaultModel;
@@ -190,7 +190,9 @@ async function testAndSaveProvider() {
   });
 
   if (!testResult.connected || !testResult.verified) {
-    throw new Error('Connection test failed.');
+    throw new Error(
+      `Connection test failed${testResult.error?.message ? `: ${testResult.error.message}` : '.'}`
+    );
   }
 
   await sendMessage({

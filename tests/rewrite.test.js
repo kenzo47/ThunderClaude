@@ -361,7 +361,7 @@ describe('rewrite orchestrator', () => {
     const thunderbird = createThunderbird('<p>Hello</p>');
     const provider = {
       ...createProvider('<p>Unused</p>'),
-      defaultBaseUrl: 'http://localhost:11434',
+      defaultBaseUrl: 'http://localhost:11434/api',
     };
 
     await expect(

@@ -5,7 +5,7 @@ import {
   registerProvider,
 } from './index.js';
 
-const DEFAULT_BASE_URL = 'http://localhost:11434';
+const DEFAULT_BASE_URL = 'http://localhost:11434/api';
 const LM_STUDIO_BASE_URL = 'http://localhost:1234/v1';
 const DEFAULT_ENDPOINT_HOST = 'localhost';
 
@@ -13,15 +13,24 @@ function createLocalUrl(baseUrl = DEFAULT_BASE_URL) {
   const url = new URL(baseUrl);
   const path = url.pathname.replace(/\/+$/, '');
 
-  if (path.endsWith('/v1')) {
-    url.pathname = `${path}/chat/completions`.replace(/^\/?/, '/');
+  if (path.endsWith('/v1') || path.endsWith('/chat/completions')) {
+    url.pathname = path.endsWith('/chat/completions')
+      ? path
+      : `${path}/chat/completions`.replace(/^\/?/, '/');
     return {
       kind: 'openai-compatible',
       url: url.toString(),
     };
   }
 
-  url.pathname = path.endsWith('/api/chat') ? path : `${path}/api/chat`.replace(/^\/?/, '/');
+  if (path.endsWith('/api/chat')) {
+    url.pathname = path;
+  } else if (path.endsWith('/api')) {
+    url.pathname = `${path}/chat`.replace(/^\/?/, '/');
+  } else {
+    url.pathname = `${path}/api/chat`.replace(/^\/?/, '/');
+  }
+
   return {
     kind: 'ollama',
     url: url.toString(),
@@ -130,7 +139,11 @@ const localLlmsProvider = {
 
     try {
       return await checkLocalServer(options);
-    } catch {
+    } catch (error) {
+      if (options.throwOnError) {
+        throw error;
+      }
+
       return false;
     }
   },

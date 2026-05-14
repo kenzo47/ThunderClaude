@@ -65,6 +65,21 @@ function successfulOpenAiResponse(text = 'OK') {
   };
 }
 
+function providerError(status, message, type) {
+  return {
+    ok: false,
+    status,
+    async json() {
+      return {
+        error: {
+          message,
+          type,
+        },
+      };
+    },
+  };
+}
+
 describe('options router', () => {
   let storageArea;
 
@@ -88,14 +103,14 @@ describe('options router', () => {
       keyMode: 'encrypted',
     });
     expect(snapshot.providerConfigs['local-llms']).toMatchObject({
-      customBaseUrl: 'http://localhost:11434',
+      customBaseUrl: 'http://localhost:11434/api',
       hasKey: false,
       keyMode: 'none',
       localAccessEnabled: true,
       verified: false,
     });
     expect(snapshot.providers.find((provider) => provider.id === 'local-llms')).toMatchObject({
-      alternateBaseUrls: ['http://localhost:11434', 'http://localhost:1234/v1'],
+      alternateBaseUrls: ['http://localhost:11434/api', 'http://localhost:1234/v1'],
       label: 'Local LLMs',
     });
   });
@@ -240,11 +255,50 @@ describe('options router', () => {
     });
   });
 
+  it('returns provider error details for failed connection tests', async () => {
+    await saveProviderOptions(
+      {
+        apiKey: 'sk-test-fake-key-do-not-use',
+        defaultModel: 'gpt-5.5',
+        keyMode: 'encrypted',
+        providerId: 'openai',
+      },
+      { storageArea }
+    );
+
+    await expect(
+      testProviderOptions(
+        {
+          defaultModel: 'gpt-5.5',
+          keyMode: 'encrypted',
+          providerId: 'openai',
+        },
+        {
+          fetchImpl: async () =>
+            providerError(
+              401,
+              'invalid api key sk-test-fake-key-do-not-use',
+              'authentication_error'
+            ),
+          storageArea,
+        }
+      )
+    ).resolves.toEqual({
+      connected: false,
+      error: {
+        code: 'authentication_error',
+        message: 'invalid api key sk-...',
+        status: 401,
+      },
+      verified: false,
+    });
+  });
+
   it('requires explicit local access before testing Local LLMs', async () => {
     await expect(
       testProviderOptions(
         {
-          customBaseUrl: 'http://localhost:11434',
+          customBaseUrl: 'http://localhost:11434/api',
           defaultModel: 'llama3.2',
           localAccessEnabled: false,
           providerId: 'local-llms',
@@ -259,7 +313,7 @@ describe('options router', () => {
   it('saves explicit local access for Local LLMs', async () => {
     const snapshot = await saveProviderOptions(
       {
-        customBaseUrl: 'http://localhost:11434',
+        customBaseUrl: 'http://localhost:11434/api',
         defaultModel: 'llama3.2',
         keyMode: 'none',
         localAccessEnabled: true,
@@ -272,7 +326,7 @@ describe('options router', () => {
       'local-llms': true,
     });
     expect(snapshot.providerConfigs['local-llms']).toMatchObject({
-      customBaseUrl: 'http://localhost:11434',
+      customBaseUrl: 'http://localhost:11434/api',
       keyMode: 'none',
       localAccessEnabled: true,
       verified: false,

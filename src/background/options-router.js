@@ -28,6 +28,20 @@ export class OptionsError extends Error {
   }
 }
 
+function redactErrorMessage(message) {
+  return String(message)
+    .replace(/sk-[a-zA-Z0-9_-]+/g, 'sk-...')
+    .replace(/Bearer\s+[a-zA-Z0-9._-]+/gi, 'Bearer ...');
+}
+
+function serializeConnectionError(error) {
+  return {
+    code: error?.code ?? 'provider_connection_failed',
+    message: redactErrorMessage(error?.message ?? 'Provider connection failed.'),
+    status: error?.status ?? null,
+  };
+}
+
 function serializeProvider(provider) {
   const serialized = {
     defaultModel: provider.defaultModel,
@@ -291,11 +305,20 @@ export async function testProviderOptions(
   const testedModel = defaultModel?.trim() || savedModel;
   assertLocalProviderEnabled(providerId, testedBaseUrl, settings, localAccessEnabled);
   const key = await resolveProviderKey(providerId, resolvedKeyMode, apiKey, options);
-  const connected = await provider.testConnection(key, {
-    baseUrl: testedBaseUrl,
-    fetchImpl: options.fetchImpl,
-    model: testedModel,
-  });
+  let connected = false;
+  let connectionError = null;
+
+  try {
+    connected = await provider.testConnection(key, {
+      baseUrl: testedBaseUrl,
+      fetchImpl: options.fetchImpl,
+      model: testedModel,
+      throwOnError: true,
+    });
+  } catch (error) {
+    connectionError = serializeConnectionError(error);
+  }
+
   const matchesSavedConfig = testMatchesSavedProviderConfig(
     {
       apiKey,
@@ -323,7 +346,11 @@ export async function testProviderOptions(
     );
   }
 
-  return { connected, verified };
+  return {
+    connected,
+    ...(connectionError ? { error: connectionError } : {}),
+    verified,
+  };
 }
 
 export async function completeOnboarding({ providerId } = {}, options = {}) {

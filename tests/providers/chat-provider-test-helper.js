@@ -92,6 +92,19 @@ export function defineChatProviderBehaviorTests({
     ).resolves.toBe(false);
   });
 
+  it('throws failed test connection errors when requested', async () => {
+    await expect(
+      provider.testConnection('sk-test-fake-key-do-not-use', {
+        fetchImpl: async () => providerError(401, 'invalid api key', 'authentication_error'),
+        throwOnError: true,
+        ...testConnectionOptions,
+      })
+    ).rejects.toMatchObject({
+      code: 'authentication_error',
+      status: 401,
+    });
+  });
+
   it('maps 401 responses to authentication errors', async () => {
     await expect(
       provider.rewrite({

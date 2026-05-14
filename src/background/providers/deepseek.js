@@ -75,7 +75,11 @@ const deepseekProvider = {
         ...options,
       });
       return true;
-    } catch {
+    } catch (error) {
+      if (options.throwOnError) {
+        throw error;
+      }
+
       return false;
     }
   },
