@@ -103,4 +103,12 @@ describe('static extension security', () => {
 
     expect(html).toMatch(/<form[^>]+id="rewrite-form"[^>]+hidden/);
   });
+
+  it('keeps custom endpoint editing out of the rewrite popup', async () => {
+    const html = await readProjectFile('src/popup/popup.html');
+    const source = await readProjectFile('src/popup/popup.js');
+
+    expect(html).not.toMatch(/\bbase-url\b/);
+    expect(source).not.toMatch(/\bbaseUrl\b/);
+  });
 });

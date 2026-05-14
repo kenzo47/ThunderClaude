@@ -1,6 +1,4 @@
 import { warn } from '../lib/log.js';
-import { ensureCustomEndpointPermission } from '../lib/host-permissions.js';
-
 const thunderbird = globalThis.messenger ?? globalThis.browser;
 
 const status = document.querySelector('#status');
@@ -12,8 +10,6 @@ const providerSelect = document.querySelector('#provider');
 const modelSelect = document.querySelector('#model');
 const customModelField = document.querySelector('#custom-model-field');
 const customModelInput = document.querySelector('#custom-model');
-const baseUrlField = document.querySelector('#base-url-field');
-const baseUrlInput = document.querySelector('#base-url');
 const customPrompt = document.querySelector('#custom-prompt');
 const targetLanguageField = document.querySelector('#target-language-field');
 const targetLanguage = document.querySelector('#target-language');
@@ -38,7 +34,6 @@ function setControlsDisabled(disabled) {
     providerSelect,
     modelSelect,
     customModelInput,
-    baseUrlInput,
     customPrompt,
     targetLanguage,
     storagePhrase,
@@ -114,10 +109,6 @@ function getSelectedProviderConfig() {
   return optionsSnapshot?.providerConfigs?.[getSelectedProvider().id];
 }
 
-function isOpenAiCompatible(provider) {
-  return provider.id === 'openai-compatible';
-}
-
 function shouldUnlockForRewrite() {
   const config = getSelectedProviderConfig();
   return Boolean(
@@ -146,8 +137,6 @@ function renderModels() {
   modelSelect.value = modelList.includes(configuredModel) ? configuredModel : 'custom';
   customModelInput.value = modelSelect.value === 'custom' ? configuredModel : '';
   customModelField.hidden = modelSelect.value !== 'custom';
-  baseUrlField.hidden = !isOpenAiCompatible(provider);
-  baseUrlInput.value = optionsSnapshot?.settings?.customBaseUrlByProvider?.[provider.id] ?? '';
   renderSessionUnlock();
 }
 
@@ -195,15 +184,10 @@ async function currentPayload() {
   const provider = getSelectedProvider();
   const modelId = modelSelect.value;
   const customModel = customModelInput.value.trim();
-  const baseUrl = baseUrlInput.value.trim();
   let selectionText;
 
   if (modelId === 'custom' && !customModel) {
     throw new Error('Enter a custom model.');
-  }
-
-  if (isOpenAiCompatible(provider) && !baseUrl) {
-    throw new Error('Enter a base URL.');
   }
 
   if (selectedPreset === 'reply-draft' && !custom) {
@@ -217,7 +201,6 @@ async function currentPayload() {
   return {
     action: 'rewrite',
     allowImageRelocation: allowImageRelocation.checked,
-    baseUrl: isOpenAiCompatible(provider) ? baseUrl : undefined,
     customModel: modelId === 'custom' ? customModel : undefined,
     customPrompt: custom,
     modelId,
@@ -286,11 +269,6 @@ async function submitRewrite() {
     : 'Rewriting draft...';
 
   const payload = await currentPayload();
-  await ensureCustomEndpointPermission(
-    payload.providerId,
-    payload.baseUrl,
-    thunderbird.permissions
-  );
   await unlockForRewriteIfNeeded();
   status.textContent = 'Rewriting draft...';
   await sendMessage(payload);
