@@ -245,6 +245,19 @@ function normalizeComposeBody(details) {
   return typeof details?.body === 'string' ? details.body : '';
 }
 
+function resolveBaseUrl(providerId, message, settings) {
+  const savedBaseUrl = settings.customBaseUrlByProvider[providerId] ?? '';
+  const requestedBaseUrl = message?.baseUrl?.trim();
+
+  if (requestedBaseUrl && requestedBaseUrl !== savedBaseUrl) {
+    throw new RewriteError('Save and test the custom endpoint before rewriting drafts.', {
+      code: 'provider_endpoint_not_verified',
+    });
+  }
+
+  return savedBaseUrl;
+}
+
 export async function rewriteComposeDraft(message, options = {}) {
   const thunderbird = getThunderbirdApi(options.thunderbird);
   const tabId = Number(message?.tabId);
@@ -292,7 +305,7 @@ export async function rewriteComposeDraft(message, options = {}) {
   const model = resolveModel(provider, message, settings);
   const allowedCidImageHtml = tokenized.media.map((entry) => entry.outerHTML);
   const sanitizeImpl = options.sanitizeImpl ?? allowlistHtml;
-  const baseUrl = message?.baseUrl ?? settings.customBaseUrlByProvider[providerId];
+  const baseUrl = resolveBaseUrl(providerId, message, settings);
   const rawOutput =
     allowImageRelocation || tokenized.media.length === 0
       ? await rewriteWithRelocatableMedia({

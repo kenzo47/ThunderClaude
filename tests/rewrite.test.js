@@ -415,6 +415,37 @@ describe('rewrite orchestrator', () => {
     });
     expect(thunderbird.setCalls).toEqual([]);
   });
+
+  it('rejects custom endpoint overrides that were not saved and tested', async () => {
+    const thunderbird = createThunderbird('<p>Hello</p>');
+    const provider = createProvider('<p>Unused</p>');
+
+    await expect(
+      rewriteComposeDraft(
+        {
+          action: 'rewrite',
+          baseUrl: 'https://other.example.test/v1',
+          preset: 'shorten',
+          providerId: 'test-provider',
+          tabId: 42,
+        },
+        {
+          getSettingsImpl: async () => ({
+            ...getTestSettings(),
+            customBaseUrlByProvider: {
+              'test-provider': 'https://saved.example.test/v1',
+            },
+          }),
+          getProviderImpl: () => provider,
+          resolveProviderCredential: async () => 'stored-provider-key',
+          thunderbird,
+        }
+      )
+    ).rejects.toMatchObject({
+      code: 'provider_endpoint_not_verified',
+    });
+    expect(thunderbird.setCalls).toEqual([]);
+  });
 });
 
 describe('runtime message router', () => {
