@@ -22,6 +22,12 @@ const RELOCATE_PLACEHOLDER_RULE =
 const KEEP_PLACEHOLDER_RULE =
   'Preserve every [[TC_IMG_N]] token exactly once. Keep the tokens in their original order and locations; never delete, duplicate, rename, invent, or move them.';
 const TONE_RULE = 'Use a human-like tone. Do not use em-dashes.';
+const LIST_FORMAT_RULE =
+  'Use bullet or numbered lists when the draft contains long lists of summaries, specifications, tasks, requirements, or examples.';
+const INLINE_MEDIA_VALIDATION_CODES = new Set([
+  'inline_media_token_mismatch',
+  'inline_media_token_order_mismatch',
+]);
 
 const PRESETS = {
   'make-formal': 'Rewrite the email in a more formal and professional tone.',
@@ -126,6 +132,7 @@ function buildPrompt({ allowImageRelocation, instruction, tokenizedHtml }) {
       'Return only a sanitized HTML fragment suitable for an email body.',
       'Use only simple formatting tags such as paragraphs, lists, emphasis, and links.',
       TONE_RULE,
+      LIST_FORMAT_RULE,
       allowImageRelocation ? RELOCATE_PLACEHOLDER_RULE : KEEP_PLACEHOLDER_RULE,
     ].join(' '),
     user: [`Instruction: ${instruction}`, 'Draft HTML:', tokenizedHtml].join('\n\n'),
@@ -138,6 +145,7 @@ function buildFixedSegmentPrompt({ instruction, segmentHtml }) {
       'You rewrite one text segment from a Thunderbird compose-window email draft.',
       'Return only a sanitized HTML fragment suitable for this segment.',
       TONE_RULE,
+      LIST_FORMAT_RULE,
       'Do not include [[TC_IMG_N]] tokens or image tags; fixed inline images are inserted outside this segment.',
     ].join(' '),
     user: [`Instruction: ${instruction}`, 'Segment HTML:', segmentHtml].join('\n\n'),
@@ -219,6 +227,27 @@ async function rewriteWithFixedMedia({
   }
 
   return rewrittenSegments.join('');
+}
+
+function validateRestoredOutput({
+  allowedCidImageHtml,
+  rawOutput,
+  requireOriginalOrder,
+  restoreImpl,
+  sanitizeImpl,
+  tokenized,
+}) {
+  const sanitizedOutput = sanitizeImpl(rawOutput, {
+    allowedCidImageHtml,
+  });
+
+  return restoreImpl(sanitizedOutput, tokenized.mediaMap, {
+    requireOriginalOrder,
+  });
+}
+
+function canFallbackToFixedMedia(error) {
+  return INLINE_MEDIA_VALIDATION_CODES.has(error?.code);
 }
 
 async function defaultResolveProviderCredential(providerId, options = {}) {
@@ -308,35 +337,80 @@ export async function rewriteComposeDraft(message, options = {}) {
     (entry) => entry.outerHTML
   );
   const sanitizeImpl = options.sanitizeImpl ?? allowlistHtml;
-  const rawOutput =
-    allowImageRelocation || tokenized.media.length === 0
-      ? await rewriteWithRelocatableMedia({
-          baseUrl,
-          instruction,
-          key,
-          model,
-          provider,
-          signal: options.signal,
-          tokenizedHtml: tokenized.text,
-        })
-      : await rewriteWithFixedMedia({
-          baseUrl,
-          instruction,
-          key,
-          model,
-          provider,
-          sanitizeImpl,
-          signal: options.signal,
-          tokenizedHtml: tokenized.text,
-        });
-  const sanitizedOutput = (options.sanitizeImpl ?? allowlistHtml)(rawOutput, {
-    allowedCidImageHtml,
-  });
-  const restoredOutput = (options.restoreImpl ?? restore)(sanitizedOutput, tokenized.mediaMap, {
-    requireOriginalOrder: !allowImageRelocation,
-  });
+  const restoreImpl = options.restoreImpl ?? restore;
+  let rawOutput;
+  let restoredOutput;
+
+  if (allowImageRelocation || tokenized.media.length === 0) {
+    rawOutput = await rewriteWithRelocatableMedia({
+      baseUrl,
+      instruction,
+      key,
+      model,
+      provider,
+      signal: options.signal,
+      tokenizedHtml: tokenized.text,
+    });
+
+    try {
+      restoredOutput = validateRestoredOutput({
+        allowedCidImageHtml,
+        rawOutput,
+        requireOriginalOrder: false,
+        restoreImpl,
+        sanitizeImpl,
+        tokenized,
+      });
+    } catch (error) {
+      if (
+        !allowImageRelocation ||
+        tokenized.media.length === 0 ||
+        !canFallbackToFixedMedia(error)
+      ) {
+        throw error;
+      }
+
+      rawOutput = await rewriteWithFixedMedia({
+        baseUrl,
+        instruction,
+        key,
+        model,
+        provider,
+        sanitizeImpl,
+        signal: options.signal,
+        tokenizedHtml: tokenized.text,
+      });
+      restoredOutput = validateRestoredOutput({
+        allowedCidImageHtml,
+        rawOutput,
+        requireOriginalOrder: true,
+        restoreImpl,
+        sanitizeImpl,
+        tokenized,
+      });
+    }
+  } else {
+    rawOutput = await rewriteWithFixedMedia({
+      baseUrl,
+      instruction,
+      key,
+      model,
+      provider,
+      sanitizeImpl,
+      signal: options.signal,
+      tokenizedHtml: tokenized.text,
+    });
+    restoredOutput = validateRestoredOutput({
+      allowedCidImageHtml,
+      rawOutput,
+      requireOriginalOrder: true,
+      restoreImpl,
+      sanitizeImpl,
+      tokenized,
+    });
+  }
   const restoredSignature = tokenizedSignature.text
-    ? (options.restoreImpl ?? restore)(tokenizedSignature.text, tokenizedSignature.mediaMap)
+    ? restoreImpl(tokenizedSignature.text, tokenizedSignature.mediaMap)
     : '';
   const sanitizedSignature = restoredSignature
     ? (options.sanitizeImpl ?? allowlistHtml)(restoredSignature, {

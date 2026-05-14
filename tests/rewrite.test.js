@@ -87,6 +87,7 @@ describe('rewrite orchestrator', () => {
     expect(providerCalls[0].system).toContain('You may move the tokens to better locations');
     expect(providerCalls[0].system).toContain('Use a human-like tone.');
     expect(providerCalls[0].system).toContain('Do not use em-dashes.');
+    expect(providerCalls[0].system).toContain('Use bullet or numbered lists');
     expect(providerCalls[0].user).toContain('Rewrite the email in a more formal');
     expect(providerCalls[0].user).toContain('<p>Hello[[TC_IMG_1]]</p>');
     expect(thunderbird.setCalls).toEqual([
@@ -107,6 +108,7 @@ describe('rewrite orchestrator', () => {
     );
     const provider = createProvider((input, index) => {
       expect(input.system).toContain('one text segment');
+      expect(input.system).toContain('Use bullet or numbered lists');
       expect(input.user).not.toContain('[[TC_IMG_');
       return index === 0 ? '<p>Formal greeting ' : ' and follow-up ';
     }, providerCalls);
@@ -157,6 +159,47 @@ describe('rewrite orchestrator', () => {
 
     expect(thunderbird.setCalls[0].details.body).toBe(
       '<p>Moved </p><img src="cid:first"><img src="cid:second"></p>'
+    );
+  });
+
+  it('falls back to fixed image rewrites when relocation drops a token', async () => {
+    const providerCalls = [];
+    const thunderbird = createThunderbird('<p>Hello<img src="cid:first">there</p>');
+    const provider = createProvider((input, index) => {
+      providerCalls.push(input);
+
+      if (index === 0) {
+        return '<p>Formal text without the image.</p>';
+      }
+
+      expect(input.system).toContain('one text segment');
+      expect(input.user).not.toContain('[[TC_IMG_');
+      return index === 1 ? '<p>Formal hello ' : ' there';
+    });
+
+    await expect(
+      rewriteComposeDraft(
+        {
+          action: 'rewrite',
+          allowImageRelocation: true,
+          preset: 'make-formal',
+          providerId: 'test-provider',
+          tabId: 42,
+        },
+        {
+          getSettingsImpl: async () => getTestSettings(),
+          getProviderImpl: () => provider,
+          resolveProviderCredential: async () => 'stored-provider-key',
+          thunderbird,
+        }
+      )
+    ).resolves.toMatchObject({
+      body: '<p>Formal hello <img src="cid:first"> there',
+    });
+
+    expect(providerCalls).toHaveLength(3);
+    expect(thunderbird.setCalls[0].details.body).toBe(
+      '<p>Formal hello <img src="cid:first"> there'
     );
   });
 
@@ -377,14 +420,13 @@ describe('rewrite orchestrator', () => {
   });
 
   it('does not overwrite the draft when inline media validation fails', async () => {
-    const thunderbird = createThunderbird('<p>Hello<img src="cid:first"></p>');
-    const provider = createProvider('<p>AI dropped the image.</p>');
+    const thunderbird = createThunderbird('<p>Hello</p>');
+    const provider = createProvider('<p>Invented [[TC_IMG_1]]</p>');
 
     await expect(
       rewriteComposeDraft(
         {
           action: 'rewrite',
-          allowImageRelocation: true,
           preset: 'shorten',
           providerId: 'test-provider',
           tabId: 42,
