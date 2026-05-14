@@ -97,6 +97,37 @@ p {
   line-height: 1.45;
 }
 
+.status {
+  border: 1px solid transparent;
+  border-radius: 7px;
+  margin-top: 8px;
+  padding: 7px 9px;
+}
+
+.status[data-tone='success'] {
+  background: oklch(0.94 0.045 150);
+  border-color: oklch(0.78 0.08 150);
+  color: oklch(0.36 0.1 150);
+}
+
+.status[data-tone='warning'] {
+  background: var(--warning-soft);
+  border-color: oklch(0.78 0.08 72);
+  color: var(--warning);
+}
+
+.status[data-tone='error'] {
+  background: var(--danger-soft);
+  border-color: oklch(0.78 0.07 28);
+  color: var(--danger);
+}
+
+:root[data-theme='dark'] .status[data-tone='success'] {
+  background: oklch(0.27 0.045 150);
+  border-color: oklch(0.48 0.08 150);
+  color: oklch(0.82 0.1 150);
+}
+
 .panel {
   background: var(--panel);
   border: 1px solid var(--line);

@@ -285,7 +285,7 @@ describe('end-to-end happy path', () => {
     expect(thunderbird.setCalls).toHaveLength(1);
   });
 
-  it('leaves the draft untouched when a saved key has not been verified', async () => {
+  it('tries a saved unverified key and leaves the draft untouched on provider error', async () => {
     await configureProvider();
     await router({
       action: 'options:saveProvider',
@@ -304,7 +304,7 @@ describe('end-to-end happy path', () => {
       })
     ).resolves.toMatchObject({
       error: {
-        code: 'provider_not_verified',
+        code: 'authentication_error',
       },
       ok: false,
     });

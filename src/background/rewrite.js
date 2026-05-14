@@ -291,11 +291,6 @@ export async function rewriteComposeDraft(message, options = {}) {
       code: 'local_provider_not_enabled',
     });
   }
-  if (!settings.verifiedProviderIds?.[providerId]) {
-    throw new RewriteError('Test this provider before rewriting drafts.', {
-      code: 'provider_not_verified',
-    });
-  }
   const instruction = normalizeInstruction(message);
   const details = await thunderbird.compose.getComposeDetails(tabId);
   const composeBody = normalizeComposeBody(details);

@@ -35,8 +35,9 @@ function isOllamaBaseUrl(value) {
   }
 }
 
-function setStatus(message) {
+function setStatus(message, tone = 'neutral') {
   status.textContent = message;
+  status.dataset.tone = tone;
 }
 
 function setError(message) {
@@ -183,6 +184,7 @@ baseUrl.addEventListener('input', () => {
 providerForm.addEventListener('submit', async (event) => {
   event.preventDefault();
   setError(null);
+  setStatus('Saving provider settings...', 'neutral');
 
   try {
     const payload = providerPayload();
@@ -197,16 +199,17 @@ providerForm.addEventListener('submit', async (event) => {
     });
     apiKey.value = '';
     render();
-    setStatus('Provider settings saved.');
+    setStatus('Saved. Rewrite is enabled; test connection is optional but recommended.', 'success');
   } catch (error) {
     setError(error.message);
+    setStatus(`Save failed: ${error.message}`, 'error');
   }
 });
 
 testButton.addEventListener('click', async () => {
   setError(null);
   testButton.disabled = true;
-  setStatus('Testing provider connection...');
+  setStatus('Testing provider connection...', 'neutral');
 
   try {
     const payload = providerPayload();
@@ -219,16 +222,19 @@ testButton.addEventListener('click', async () => {
       action: 'options:testProvider',
       ...payload,
     });
-    setStatus(
-      result.verified
-        ? 'Connection test passed.'
-        : result.connected
-          ? 'Connection test passed for unsaved settings.'
-          : `Connection test failed${result.error?.message ? `: ${result.error.message}` : '.'}`
-    );
+    if (result.verified) {
+      setStatus('Connection test passed. Saved settings are verified.', 'success');
+    } else if (result.connected) {
+      setStatus('Connection test passed, but these settings are not saved yet.', 'warning');
+    } else {
+      setStatus(
+        `Connection test failed${result.error?.message ? `: ${result.error.message}` : '.'}`,
+        'error'
+      );
+    }
   } catch (error) {
     setError(error.message);
-    setStatus('Connection test failed.');
+    setStatus(`Connection test failed: ${error.message}`, 'error');
   } finally {
     testButton.disabled = false;
   }

@@ -486,34 +486,34 @@ describe('rewrite orchestrator', () => {
     expect(thunderbird.setCalls).toEqual([]);
   });
 
-  it('requires the selected provider to be verified before rewriting', async () => {
+  it('allows unverified configured providers to try rewriting', async () => {
     const thunderbird = createThunderbird('<p>Hello</p>');
-    const provider = createProvider('<p>Unused</p>');
+    const provider = createProvider('<p>Rewritten</p>');
 
-    await expect(
-      rewriteComposeDraft(
-        {
-          action: 'rewrite',
-          preset: 'shorten',
-          providerId: 'test-provider',
-          tabId: 42,
-        },
-        {
-          getSettingsImpl: async () => ({
-            ...getTestSettings(),
-            verifiedProviderIds: {
-              'test-provider': false,
-            },
-          }),
-          getProviderImpl: () => provider,
-          resolveProviderCredential: async () => 'stored-provider-key',
-          thunderbird,
-        }
-      )
-    ).rejects.toMatchObject({
-      code: 'provider_not_verified',
+    await rewriteComposeDraft(
+      {
+        action: 'rewrite',
+        preset: 'shorten',
+        providerId: 'test-provider',
+        tabId: 42,
+      },
+      {
+        getSettingsImpl: async () => ({
+          ...getTestSettings(),
+          verifiedProviderIds: {
+            'test-provider': false,
+          },
+        }),
+        getProviderImpl: () => provider,
+        resolveProviderCredential: async () => 'stored-provider-key',
+        thunderbird,
+      }
+    );
+
+    expect(thunderbird.setCalls[0].details).toMatchObject({
+      body: '<p>Rewritten</p>',
+      isPlainText: false,
     });
-    expect(thunderbird.setCalls).toEqual([]);
   });
 
   it('rejects custom endpoint overrides that were not saved and tested', async () => {

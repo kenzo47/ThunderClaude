@@ -252,8 +252,11 @@ export async function saveProviderOptions(
   const storageArea = getStorageArea(options.storageArea);
   const trimmedApiKey = apiKey.trim();
   const currentSettings = await getSettings({ storageArea });
+  const currentKeyStatus = await getKeyStatus(providerId, storageArea);
   const savedBaseUrl = customBaseUrl.trim() || provider.defaultBaseUrl || '';
   assertLocalProviderEnabled(providerId, savedBaseUrl, currentSettings, localAccessEnabled);
+  const providerConfigured =
+    LOCAL_PROVIDER_IDS.has(providerId) || Boolean(trimmedApiKey) || currentKeyStatus.hasKey;
 
   if (trimmedApiKey || normalizedKeyMode === 'none') {
     await removeValue(providerId, { storageArea });
@@ -291,6 +294,7 @@ export async function saveProviderOptions(
           ...settings.keyModeByProvider,
           [providerId]: storedKeyMode,
         },
+        onboardingComplete: providerConfigured ? true : settings.onboardingComplete,
         verifiedProviderIds: {
           ...settings.verifiedProviderIds,
           [providerId]: false,

@@ -48,34 +48,39 @@ function setControlsDisabled(disabled) {
   }
 }
 
-function providerIsVerified(providerId) {
+function providerIsConfigured(provider) {
+  const config = optionsSnapshot?.providerConfigs?.[provider?.id];
+
   return Boolean(
-    optionsSnapshot?.providerConfigs?.[providerId]?.verified ||
-    optionsSnapshot?.settings?.verifiedProviderIds?.[providerId]
+    config?.verified ||
+    optionsSnapshot?.settings?.verifiedProviderIds?.[provider?.id] ||
+    config?.hasKey ||
+    provider?.id === 'local-llms'
   );
 }
 
-function selectedProviderVerified() {
-  return providerIsVerified(getSelectedProvider()?.id);
+function selectedProviderConfigured() {
+  return providerIsConfigured(getSelectedProvider());
 }
 
-function findVerifiedProviderId() {
+function findConfiguredProviderId() {
   const defaultProviderId = optionsSnapshot?.settings?.defaultProviderId;
-  if (defaultProviderId && providerIsVerified(defaultProviderId)) {
+  const defaultProvider = providers.find((provider) => provider.id === defaultProviderId);
+  if (providerIsConfigured(defaultProvider)) {
     return defaultProviderId;
   }
 
-  return providers.find((provider) => providerIsVerified(provider.id))?.id ?? null;
+  return providers.find((provider) => providerIsConfigured(provider))?.id ?? null;
 }
 
 function updateRewriteAvailability() {
-  const providerVerified = selectedProviderVerified();
-  rewriteButton.disabled = !activeTabId || !providerVerified;
+  const providerConfigured = selectedProviderConfigured();
+  rewriteButton.disabled = !activeTabId || !providerConfigured;
 
   if (!activeTabId) {
     status.textContent = 'Open a compose window to use ThunderClaude.';
-  } else if (!providerVerified) {
-    status.textContent = 'Test this provider in options before rewriting.';
+  } else if (!providerConfigured) {
+    status.textContent = 'Save this provider in options before rewriting.';
   } else {
     status.textContent = 'Ready to rewrite this draft.';
   }
@@ -131,7 +136,7 @@ function renderProviders() {
   );
 
   providerSelect.value =
-    findVerifiedProviderId() ?? optionsSnapshot?.settings?.defaultProviderId ?? providers[0]?.id;
+    findConfiguredProviderId() ?? optionsSnapshot?.settings?.defaultProviderId ?? providers[0]?.id;
 }
 
 function getSelectedProvider() {
@@ -202,8 +207,8 @@ async function currentPayload() {
     throw new Error('Enter a custom model.');
   }
 
-  if (!selectedProviderVerified()) {
-    throw new Error('Test this provider in options before rewriting.');
+  if (!selectedProviderConfigured()) {
+    throw new Error('Save this provider in options before rewriting.');
   }
 
   if (selectedPreset === 'reply-draft' && !custom) {

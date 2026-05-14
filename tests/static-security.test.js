@@ -112,11 +112,11 @@ describe('static extension security', () => {
     expect(source).not.toMatch(/\bbaseUrl\b/);
   });
 
-  it('requires verified providers before enabling popup rewrites', async () => {
+  it('requires configured providers before enabling popup rewrites', async () => {
     const source = await readProjectFile('src/popup/popup.js');
 
-    expect(source).toMatch(/providerIsVerified\(getSelectedProvider\(\)\?\.id\)/);
-    expect(source).toMatch(/optionsSnapshot\?\.providerConfigs\?\.\[providerId\]\?\.verified/);
-    expect(source).toMatch(/rewriteButton\.disabled = !activeTabId \|\| !providerVerified/);
+    expect(source).toMatch(/selectedProviderConfigured\(\)/);
+    expect(source).toMatch(/config\?\.hasKey/);
+    expect(source).toMatch(/rewriteButton\.disabled = !activeTabId \|\| !providerConfigured/);
   });
 });
