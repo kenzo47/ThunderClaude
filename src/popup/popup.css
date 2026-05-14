@@ -68,6 +68,14 @@ textarea {
   justify-content: space-between;
 }
 
+.header-actions {
+  align-items: end;
+  display: grid;
+  flex: 0 0 auto;
+  gap: 6px;
+  justify-items: end;
+}
+
 h1 {
   font-size: 15px;
   font-weight: 700;
@@ -93,6 +101,21 @@ h1 {
   font-weight: 650;
   line-height: 1;
   padding: 5px 8px;
+}
+
+.theme-toggle {
+  align-items: center;
+  color: var(--muted);
+  display: flex;
+  font-size: 11px;
+  font-weight: 700;
+  gap: 5px;
+  line-height: 1;
+}
+
+.theme-toggle input {
+  height: 14px;
+  width: 14px;
 }
 
 .rewrite-form {

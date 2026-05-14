@@ -21,6 +21,7 @@ const RELOCATE_PLACEHOLDER_RULE =
   'Preserve every [[TC_IMG_N]] token exactly once. You may move the tokens to better locations, but never delete, duplicate, rename, or invent them.';
 const KEEP_PLACEHOLDER_RULE =
   'Preserve every [[TC_IMG_N]] token exactly once. Keep the tokens in their original order and locations; never delete, duplicate, rename, invent, or move them.';
+const TONE_RULE = 'Use a human-like tone. Do not use em-dashes.';
 
 const PRESETS = {
   'make-formal': 'Rewrite the email in a more formal and professional tone.',
@@ -123,6 +124,7 @@ function buildPrompt({ allowImageRelocation, instruction, tokenizedHtml }) {
       'You rewrite Thunderbird compose-window email drafts.',
       'Return only a sanitized HTML fragment suitable for an email body.',
       'Use only simple formatting tags such as paragraphs, lists, emphasis, and links.',
+      TONE_RULE,
       allowImageRelocation ? RELOCATE_PLACEHOLDER_RULE : KEEP_PLACEHOLDER_RULE,
     ].join(' '),
     user: [`Instruction: ${instruction}`, 'Draft HTML:', tokenizedHtml].join('\n\n'),
@@ -134,6 +136,7 @@ function buildFixedSegmentPrompt({ instruction, segmentHtml }) {
     system: [
       'You rewrite one text segment from a Thunderbird compose-window email draft.',
       'Return only a sanitized HTML fragment suitable for this segment.',
+      TONE_RULE,
       'Do not include [[TC_IMG_N]] tokens or image tags; fixed inline images are inserted outside this segment.',
     ].join(' '),
     user: [`Instruction: ${instruction}`, 'Segment HTML:', segmentHtml].join('\n\n'),
@@ -335,17 +338,24 @@ export async function rewriteComposeDraft(message, options = {}) {
   const restoredSignature = tokenizedSignature.text
     ? (options.restoreImpl ?? restore)(tokenizedSignature.text, tokenizedSignature.mediaMap)
     : '';
-  const body = (options.sanitizeImpl ?? allowlistHtml)(`${restoredOutput}${restoredSignature}`, {
+  const sanitizedSignature = restoredSignature
+    ? (options.sanitizeImpl ?? allowlistHtml)(restoredSignature, {
+        allowedCidImageHtml,
+        signatureMode: true,
+      })
+    : '';
+  const body = (options.sanitizeImpl ?? allowlistHtml)(restoredOutput, {
     allowedCidImageHtml,
   });
+  const bodyWithSignature = `${body}${sanitizedSignature}`;
 
   await thunderbird.compose.setComposeDetails(tabId, {
-    body,
+    body: bodyWithSignature,
     isPlainText: false,
   });
 
   return {
-    body,
+    body: bodyWithSignature,
     model,
     providerId,
   };

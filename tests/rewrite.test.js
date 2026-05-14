@@ -84,6 +84,8 @@ describe('rewrite orchestrator', () => {
     });
     expect(providerCalls[0].system).toContain('Preserve every [[TC_IMG_N]] token exactly once.');
     expect(providerCalls[0].system).toContain('You may move the tokens to better locations');
+    expect(providerCalls[0].system).toContain('Use a human-like tone.');
+    expect(providerCalls[0].system).toContain('Do not use em-dashes.');
     expect(providerCalls[0].user).toContain('Rewrite the email in a more formal');
     expect(providerCalls[0].user).toContain('<p>Hello[[TC_IMG_1]]</p>');
     expect(thunderbird.setCalls).toEqual([
@@ -207,7 +209,40 @@ describe('rewrite orchestrator', () => {
     expect(providerCalls[0].user).toContain('<p>Hello</p>');
     expect(providerCalls[0].user).not.toContain('Ken');
     expect(thunderbird.setCalls[0].details.body).toBe(
-      '<p>Formal hello</p><div>-- <br><span style="color: blue">Ken</span></div>'
+      '<p>Formal hello</p><div class="moz-signature">-- <br><span style="color: blue">Ken</span></div>'
+    );
+  });
+
+  it('preserves HTML signature tables and images outside the LLM rewrite', async () => {
+    const providerCalls = [];
+    const signature =
+      '<table cellpadding="0" style="width: 320px"><tr><td>' +
+      '<img src="https://example.test/logo.png" width="96" alt="Logo"></td>' +
+      '<td><a href="mailto:ken@example.test">Ken</a></td></tr></table>';
+    const thunderbird = createThunderbird(`<p>Hello</p>${signature}`);
+    const provider = createProvider('<p>Formal hello</p>', providerCalls);
+
+    await rewriteComposeDraft(
+      {
+        action: 'rewrite',
+        preset: 'make-formal',
+        providerId: 'test-provider',
+        tabId: 7,
+      },
+      {
+        getSettingsImpl: async () => getTestSettings(),
+        getProviderImpl: () => provider,
+        resolveProviderCredential: async () => 'stored-provider-key',
+        thunderbird,
+      }
+    );
+
+    expect(providerCalls[0].user).toContain('<p>Hello</p>');
+    expect(providerCalls[0].user).not.toContain('ken@example.test');
+    expect(thunderbird.setCalls[0].details.body).toBe(
+      '<p>Formal hello</p><table style="width: 320px" cellpadding="0"><tr><td>' +
+        '<img width="96" alt="Logo" src="https://example.test/logo.png"></td>' +
+        '<td><a href="mailto:ken@example.test">Ken</a></td></tr></table>'
     );
   });
 

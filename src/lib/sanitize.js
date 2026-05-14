@@ -18,6 +18,23 @@ const ALLOWED_ELEMENTS = new Set([
   'u',
   'ul',
 ]);
+const SIGNATURE_ALLOWED_ELEMENTS = new Set([
+  ...ALLOWED_ELEMENTS,
+  'b',
+  'big',
+  'font',
+  'i',
+  'img',
+  'small',
+  's',
+  'table',
+  'tbody',
+  'td',
+  'tfoot',
+  'th',
+  'thead',
+  'tr',
+]);
 
 const DISCARD_CONTENT_ELEMENTS = new Set([
   'base',
@@ -34,9 +51,42 @@ const DISCARD_CONTENT_ELEMENTS = new Set([
 ]);
 
 const ALLOWED_STYLE_PROPERTIES = new Set(['background-color', 'color', 'text-align']);
+const SIGNATURE_ALLOWED_STYLE_PROPERTIES = new Set([
+  ...ALLOWED_STYLE_PROPERTIES,
+  'border',
+  'border-bottom',
+  'border-collapse',
+  'border-left',
+  'border-right',
+  'border-top',
+  'display',
+  'font-family',
+  'font-size',
+  'font-style',
+  'font-weight',
+  'height',
+  'line-height',
+  'margin',
+  'margin-bottom',
+  'margin-left',
+  'margin-right',
+  'margin-top',
+  'max-width',
+  'min-width',
+  'padding',
+  'padding-bottom',
+  'padding-left',
+  'padding-right',
+  'padding-top',
+  'text-decoration',
+  'vertical-align',
+  'width',
+]);
 const URL_STYLE_PATTERN = /(?:expression|url)\s*\(/i;
 const SAFE_HREF_PATTERN = /^(?:https?:|mailto:)/i;
 const CID_SRC_PATTERN = /^cid:/i;
+const SAFE_SIGNATURE_IMG_SRC_PATTERN =
+  /^(?:cid:|https?:|data:image\/(?:gif|jpeg|png|webp);base64,)/i;
 
 export class SanitizerError extends Error {
   constructor(message, { code = 'sanitizer_error' } = {}) {
@@ -86,7 +136,7 @@ function isAllowedHref(value) {
   return SAFE_HREF_PATTERN.test(value.trim());
 }
 
-function sanitizeStyle(value) {
+function sanitizeStyle(value, allowedStyleProperties = ALLOWED_STYLE_PROPERTIES) {
   const safeDeclarations = [];
 
   for (const declaration of value.split(';')) {
@@ -99,7 +149,7 @@ function sanitizeStyle(value) {
     const propertyValue = declaration.slice(separatorIndex + 1).trim();
 
     if (
-      !ALLOWED_STYLE_PROPERTIES.has(property) ||
+      !allowedStyleProperties.has(property) ||
       !propertyValue ||
       URL_STYLE_PATTERN.test(propertyValue) ||
       propertyValue.includes('<') ||
@@ -122,10 +172,66 @@ function isAllowedCidImage(element, allowedImages) {
   );
 }
 
-function sanitizeElementAttributes(element) {
+function sanitizeTokenAttribute(value) {
+  const normalizedValue = value.trim().replace(/\s+/g, ' ');
+
+  return /^[a-zA-Z0-9 _:-]{1,200}$/.test(normalizedValue) ? normalizedValue : '';
+}
+
+function sanitizeDimensionAttribute(value) {
+  const normalizedValue = value.trim();
+
+  return /^(?:[1-9]\d{0,3}|0)(?:\.\d{1,2})?(?:%|px)?$/.test(normalizedValue) ? normalizedValue : '';
+}
+
+function sanitizeSignatureElementAttributes(element, originalAttributes) {
+  const tagName = element.tagName.toLowerCase();
+  const safeCopyAttributes = new Map([
+    ['align', /^(?:left|right|center|justify)$/i],
+    ['valign', /^(?:top|middle|bottom|baseline)$/i],
+    ['cellpadding', /^\d{1,3}$/],
+    ['cellspacing', /^\d{1,3}$/],
+    ['border', /^\d{1,3}$/],
+    ['alt', /^[^<>]{0,300}$/],
+    ['title', /^[^<>]{0,300}$/],
+  ]);
+
+  for (const [attributeName, pattern] of safeCopyAttributes.entries()) {
+    const value = originalAttributes.get(attributeName);
+    if (value && pattern.test(value.trim())) {
+      element.setAttribute(attributeName, value.trim());
+    }
+  }
+
+  for (const attributeName of ['width', 'height']) {
+    const value = sanitizeDimensionAttribute(originalAttributes.get(attributeName) ?? '');
+    if (value) {
+      element.setAttribute(attributeName, value);
+    }
+  }
+
+  for (const attributeName of ['class', 'id']) {
+    const value = sanitizeTokenAttribute(originalAttributes.get(attributeName) ?? '');
+    if (value) {
+      element.setAttribute(attributeName, value);
+    }
+  }
+
+  if (tagName === 'img') {
+    const src = originalAttributes.get('src')?.trim() ?? '';
+    if (SAFE_SIGNATURE_IMG_SRC_PATTERN.test(src)) {
+      element.setAttribute('src', src);
+    }
+  }
+}
+
+function sanitizeElementAttributes(element, { signatureMode = false } = {}) {
   const tagName = element.tagName.toLowerCase();
   const href = element.getAttribute('href');
   const style = element.getAttribute('style');
+  const originalAttributes = new Map(
+    [...element.attributes].map((attribute) => [attribute.name.toLowerCase(), attribute.value])
+  );
 
   for (const attribute of [...element.attributes]) {
     element.removeAttribute(attribute.name);
@@ -136,14 +242,21 @@ function sanitizeElementAttributes(element) {
   }
 
   if (style) {
-    const sanitizedStyle = sanitizeStyle(style);
+    const sanitizedStyle = sanitizeStyle(
+      style,
+      signatureMode ? SIGNATURE_ALLOWED_STYLE_PROPERTIES : ALLOWED_STYLE_PROPERTIES
+    );
     if (sanitizedStyle) {
       element.setAttribute('style', sanitizedStyle);
     }
   }
+
+  if (signatureMode) {
+    sanitizeSignatureElementAttributes(element, originalAttributes);
+  }
 }
 
-function sanitizeNode(node, allowedImages) {
+function sanitizeNode(node, { allowedElements, allowedImages, signatureMode = false }) {
   if (node.nodeType === 3) {
     return;
   }
@@ -156,7 +269,7 @@ function sanitizeNode(node, allowedImages) {
   const element = node;
   const tagName = element.tagName.toLowerCase();
 
-  if (isAllowedCidImage(element, allowedImages)) {
+  if (!signatureMode && isAllowedCidImage(element, allowedImages)) {
     return;
   }
 
@@ -166,23 +279,26 @@ function sanitizeNode(node, allowedImages) {
   }
 
   for (const child of [...element.childNodes]) {
-    sanitizeNode(child, allowedImages);
+    sanitizeNode(child, { allowedElements, allowedImages, signatureMode });
   }
 
-  if (!ALLOWED_ELEMENTS.has(tagName)) {
+  if (!allowedElements.has(tagName)) {
     element.replaceWith(...element.childNodes);
     return;
   }
 
-  sanitizeElementAttributes(element);
+  sanitizeElementAttributes(element, { signatureMode });
 }
 
-function allowlistHtmlWithDomParser(html, { allowedImages, DOMParserImpl }) {
+function allowlistHtmlWithDomParser(
+  html,
+  { allowedElements, allowedImages, DOMParserImpl, signatureMode }
+) {
   const parser = new DOMParserImpl();
   const document = parser.parseFromString(html, 'text/html');
 
   for (const node of [...document.body.childNodes]) {
-    sanitizeNode(node, allowedImages);
+    sanitizeNode(node, { allowedElements, allowedImages, signatureMode });
   }
 
   return document.body.innerHTML;
@@ -195,7 +311,60 @@ function stripDiscardedFallback(html) {
   );
 }
 
-function sanitizeAttributesFallback(tagName, rawAttributes) {
+function readAttributeFromRaw(rawAttributes, attributeName) {
+  const pattern = new RegExp(
+    `\\b${attributeName}\\s*=\\s*(?:"([^"]*)"|'([^']*)'|([^\\s"'=<>\\\`]+))`,
+    'i'
+  );
+  const match = rawAttributes.match(pattern);
+
+  return match?.[1] ?? match?.[2] ?? match?.[3] ?? '';
+}
+
+function sanitizeSignatureAttributesFallback(tagName, rawAttributes) {
+  const attributes = [];
+  const safeAttributes = [
+    ['align', /^(?:left|right|center|justify)$/i],
+    ['valign', /^(?:top|middle|bottom|baseline)$/i],
+    ['cellpadding', /^\d{1,3}$/],
+    ['cellspacing', /^\d{1,3}$/],
+    ['border', /^\d{1,3}$/],
+    ['alt', /^[^<>]{0,300}$/],
+    ['title', /^[^<>]{0,300}$/],
+  ];
+
+  for (const attributeName of ['class', 'id']) {
+    const value = sanitizeTokenAttribute(readAttributeFromRaw(rawAttributes, attributeName));
+    if (value) {
+      attributes.push(`${attributeName}="${escapeHtml(value)}"`);
+    }
+  }
+
+  for (const attributeName of ['width', 'height']) {
+    const value = sanitizeDimensionAttribute(readAttributeFromRaw(rawAttributes, attributeName));
+    if (value) {
+      attributes.push(`${attributeName}="${escapeHtml(value)}"`);
+    }
+  }
+
+  for (const [attributeName, pattern] of safeAttributes) {
+    const value = readAttributeFromRaw(rawAttributes, attributeName).trim();
+    if (value && pattern.test(value)) {
+      attributes.push(`${attributeName}="${escapeHtml(value)}"`);
+    }
+  }
+
+  if (tagName === 'img') {
+    const src = readAttributeFromRaw(rawAttributes, 'src').trim();
+    if (SAFE_SIGNATURE_IMG_SRC_PATTERN.test(src)) {
+      attributes.push(`src="${escapeHtml(src)}"`);
+    }
+  }
+
+  return attributes;
+}
+
+function sanitizeAttributesFallback(tagName, rawAttributes, { signatureMode = false } = {}) {
   const hrefMatch = rawAttributes.match(/\bhref\s*=\s*(?:"([^"]*)"|'([^']*)'|([^\s"'=<>`]+))/i);
   const styleMatch = rawAttributes.match(/\bstyle\s*=\s*(?:"([^"]*)"|'([^']*)'|([^\s"'=<>`]+))/i);
   const attributes = [];
@@ -209,16 +378,23 @@ function sanitizeAttributesFallback(tagName, rawAttributes) {
 
   const style = styleMatch?.[1] ?? styleMatch?.[2] ?? styleMatch?.[3] ?? '';
   if (style) {
-    const sanitizedStyle = sanitizeStyle(style);
+    const sanitizedStyle = sanitizeStyle(
+      style,
+      signatureMode ? SIGNATURE_ALLOWED_STYLE_PROPERTIES : ALLOWED_STYLE_PROPERTIES
+    );
     if (sanitizedStyle) {
       attributes.push(`style="${escapeHtml(sanitizedStyle)}"`);
     }
   }
 
+  if (signatureMode) {
+    attributes.push(...sanitizeSignatureAttributesFallback(tagName, rawAttributes));
+  }
+
   return attributes.length ? ` ${attributes.join(' ')}` : '';
 }
 
-function allowlistHtmlWithScanner(html, allowedImages) {
+function allowlistHtmlWithScanner(html, { allowedElements, allowedImages, signatureMode }) {
   const imagePlaceholders = new Map();
   let imageIndex = 0;
   let sanitized = stripDiscardedFallback(html);
@@ -238,7 +414,7 @@ function allowlistHtmlWithScanner(html, allowedImages) {
         return match;
       }
 
-      if (!ALLOWED_ELEMENTS.has(normalizedTag)) {
+      if (!allowedElements.has(normalizedTag)) {
         return '';
       }
 
@@ -246,7 +422,9 @@ function allowlistHtmlWithScanner(html, allowedImages) {
         return `</${normalizedTag}>`;
       }
 
-      return `<${normalizedTag}${sanitizeAttributesFallback(normalizedTag, attrs)}>`;
+      return `<${normalizedTag}${sanitizeAttributesFallback(normalizedTag, attrs, {
+        signatureMode,
+      })}>`;
     }
   );
 
@@ -259,7 +437,7 @@ function allowlistHtmlWithScanner(html, allowedImages) {
 
 export function allowlistHtml(
   html,
-  { allowedCidImageHtml = [], DOMParserImpl = globalThis.DOMParser } = {}
+  { allowedCidImageHtml = [], DOMParserImpl = globalThis.DOMParser, signatureMode = false } = {}
 ) {
   if (typeof html !== 'string') {
     throw new SanitizerError('HTML input must be a string.', {
@@ -268,10 +446,16 @@ export function allowlistHtml(
   }
 
   const allowedImages = normalizeAllowedImages(allowedCidImageHtml);
+  const allowedElements = signatureMode ? SIGNATURE_ALLOWED_ELEMENTS : ALLOWED_ELEMENTS;
 
   if (typeof DOMParserImpl === 'function') {
-    return allowlistHtmlWithDomParser(html, { allowedImages, DOMParserImpl });
+    return allowlistHtmlWithDomParser(html, {
+      allowedElements,
+      allowedImages,
+      DOMParserImpl,
+      signatureMode,
+    });
   }
 
-  return allowlistHtmlWithScanner(html, allowedImages);
+  return allowlistHtmlWithScanner(html, { allowedElements, allowedImages, signatureMode });
 }

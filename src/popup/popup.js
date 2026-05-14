@@ -14,6 +14,7 @@ const customPrompt = document.querySelector('#custom-prompt');
 const targetLanguageField = document.querySelector('#target-language-field');
 const targetLanguage = document.querySelector('#target-language');
 const allowImageRelocation = document.querySelector('#allow-image-relocation');
+const themeToggle = document.querySelector('#theme-toggle');
 const presetButtons = [...document.querySelectorAll('[data-preset]')];
 
 let activeTabId = null;
@@ -23,6 +24,7 @@ let selectedPreset = 'make-formal';
 
 function applyTheme(theme) {
   document.documentElement.dataset.theme = theme === 'dark' ? 'dark' : 'light';
+  themeToggle.checked = theme === 'dark';
 }
 
 function setError(message) {
@@ -39,6 +41,7 @@ function setControlsDisabled(disabled) {
     customPrompt,
     targetLanguage,
     allowImageRelocation,
+    themeToggle,
     rewriteButton,
   ]) {
     control.disabled = disabled;
@@ -268,6 +271,26 @@ providerSelect.addEventListener('change', () => {
 
 modelSelect.addEventListener('change', () => {
   customModelField.hidden = modelSelect.value !== 'custom';
+});
+
+themeToggle.addEventListener('change', async () => {
+  setError(null);
+  const theme = themeToggle.checked ? 'dark' : 'light';
+  applyTheme(theme);
+
+  try {
+    const settings = await sendMessage({
+      action: 'options:setTheme',
+      theme,
+    });
+    optionsSnapshot = {
+      ...optionsSnapshot,
+      settings,
+    };
+  } catch (error) {
+    setError(error.message);
+    applyTheme(optionsSnapshot?.settings?.theme);
+  }
 });
 
 form.addEventListener('submit', async (event) => {

@@ -17,7 +17,13 @@
           <h1>ThunderClaude</h1>
           <p id="status" class="status" aria-live="polite">Checking compose window...</p>
         </div>
-        <span id="compose-mode" class="mode-badge" hidden></span>
+        <div class="header-actions">
+          <label class="theme-toggle">
+            <input id="theme-toggle" type="checkbox" />
+            <span>Dark</span>
+          </label>
+          <span id="compose-mode" class="mode-badge" hidden></span>
+        </div>
       </header>
 
       <form id="rewrite-form" class="rewrite-form" hidden>

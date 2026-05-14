@@ -25,4 +25,14 @@ describe('signature detection', () => {
       signatureHtml: '<div>-- <br>Ken</div>',
     });
   });
+
+  it('detects a trailing HTML contact table signature', () => {
+    const signature =
+      '<table><tr><td><img src="cid:logo"></td><td>Ken<br><a href="mailto:ken@example.test">Email</a></td></tr></table>';
+
+    expect(splitSignature(`<p>Hello there</p>${signature}`)).toEqual({
+      bodyHtml: '<p>Hello there</p>',
+      signatureHtml: signature,
+    });
+  });
 });

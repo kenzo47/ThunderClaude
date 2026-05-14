@@ -97,6 +97,28 @@ describe('HTML sanitizer', () => {
     ).toBe('<p></p>');
   });
 
+  it('preserves sanitized HTML signature layout in signature mode', () => {
+    expect(
+      allowlistHtml(
+        '<table onclick="bad()" cellpadding="0" style="width: 320px; position: fixed">' +
+          '<tr><td style="font-family: Arial; line-height: 1.3">' +
+          '<img src="https://example.test/logo.png" width="120" onerror="bad()" alt="Logo">' +
+          '<img src="cid:logo@example" onerror="bad()" height="48">' +
+          '<a href="mailto:ken@example.test" target="_blank">Ken</a>' +
+          '</td></tr></table>',
+        {
+          DOMParserImpl: null,
+          signatureMode: true,
+        }
+      )
+    ).toBe(
+      '<table style="width: 320px" cellpadding="0"><tr><td style="font-family: Arial; ' +
+        'line-height: 1.3"><img width="120" alt="Logo" src="https://example.test/logo.png">' +
+        '<img height="48" src="cid:logo@example">' +
+        '<a href="mailto:ken@example.test">Ken</a></td></tr></table>'
+    );
+  });
+
   it('uses DOMParser when available', () => {
     class FakeDOMParser {
       parseFromString() {
