@@ -28,6 +28,30 @@ function createLocalUrl(baseUrl = DEFAULT_BASE_URL) {
   };
 }
 
+function createHealthCheckUrl(baseUrl = DEFAULT_BASE_URL) {
+  const endpoint = createLocalUrl(baseUrl);
+  const url = new URL(endpoint.url);
+  const path = url.pathname.replace(/\/+$/, '');
+
+  url.pathname =
+    endpoint.kind === 'openai-compatible'
+      ? path.replace(/\/chat\/completions$/, '/models')
+      : path.replace(/\/api\/chat$/, '/api/tags');
+
+  return {
+    kind: endpoint.kind,
+    url: url.toString(),
+  };
+}
+
+export function isOllamaBaseUrl(baseUrl = DEFAULT_BASE_URL) {
+  try {
+    return createLocalUrl(baseUrl).kind === 'ollama';
+  } catch {
+    return false;
+  }
+}
+
 function extractOllamaChatText(body) {
   const text = body?.message?.content;
 
@@ -75,6 +99,21 @@ async function createChatCompletion({ baseUrl, model, system, user, signal, fetc
   return isOpenAiCompatible ? extractChatCompletionText(body) : extractOllamaChatText(body);
 }
 
+async function checkLocalServer({ baseUrl, signal, fetchImpl }) {
+  const endpoint = createHealthCheckUrl(baseUrl);
+  await fetchProviderJson(endpoint.url, {
+    endpointHost: new URL(endpoint.url).hostname,
+    fetchImpl,
+    headers: {
+      'content-type': 'application/json',
+    },
+    method: 'GET',
+    signal,
+  });
+
+  return true;
+}
+
 const localLlmsProvider = {
   id: 'local-llms',
   label: 'Local LLMs',
@@ -90,13 +129,7 @@ const localLlmsProvider = {
     }
 
     try {
-      await createChatCompletion({
-        model: options.model ?? this.defaultModel,
-        system: 'Reply with OK.',
-        user: 'Connection test.',
-        ...options,
-      });
-      return true;
+      return await checkLocalServer(options);
     } catch {
       return false;
     }

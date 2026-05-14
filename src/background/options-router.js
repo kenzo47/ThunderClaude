@@ -7,6 +7,7 @@ import './providers/openai-compatible.js';
 import './providers/openai.js';
 import './providers/openrouter.js';
 
+import { isOllamaBaseUrl } from './providers/local-llms.js';
 import { getProvider, listProviders } from './providers/index.js';
 import { getSettings, updateSettings } from './settings.js';
 import {
@@ -108,22 +109,29 @@ async function resolveProviderKey(providerId, keyMode, apiKey, options = {}) {
 }
 
 function getProviderConfig(settings, providerId, keyStatus) {
+  const provider = getProvider(providerId);
+  const customBaseUrl =
+    settings.customBaseUrlByProvider[providerId] ?? provider.defaultBaseUrl ?? '';
+  const requiresLocalAccess = LOCAL_PROVIDER_IDS.has(providerId) && isOllamaBaseUrl(customBaseUrl);
+
   return {
-    customBaseUrl:
-      settings.customBaseUrlByProvider[providerId] ?? getProvider(providerId).defaultBaseUrl ?? '',
-    defaultModel:
-      settings.defaultModelByProvider[providerId] ?? getProvider(providerId).defaultModel,
+    customBaseUrl,
+    defaultModel: settings.defaultModelByProvider[providerId] ?? provider.defaultModel,
     hasKey: keyStatus.hasKey,
     keyMode: keyStatus.keyMode,
-    localAccessEnabled: LOCAL_PROVIDER_IDS.has(providerId)
+    localAccessEnabled: requiresLocalAccess
       ? settings.enabledLocalProviderIds[providerId] !== false
       : false,
     verified: Boolean(settings.verifiedProviderIds[providerId]),
   };
 }
 
-function assertLocalProviderEnabled(providerId, settings, localAccessEnabled) {
-  if (!LOCAL_PROVIDER_IDS.has(providerId)) {
+function requiresLocalAccess(providerId, baseUrl) {
+  return LOCAL_PROVIDER_IDS.has(providerId) && isOllamaBaseUrl(baseUrl);
+}
+
+function assertLocalProviderEnabled(providerId, baseUrl, settings, localAccessEnabled) {
+  if (!requiresLocalAccess(providerId, baseUrl)) {
     return;
   }
 
@@ -155,12 +163,14 @@ function testMatchesSavedProviderConfig(
   const resolvedKeyMode = keyMode ?? getExpectedKeyMode(providerId);
   const savedKeyMode = getExpectedKeyMode(providerId);
   const savedModel = settings.defaultModelByProvider[providerId] ?? provider.defaultModel;
-  const testedModel = defaultModel?.trim() || provider.defaultModel;
+  const testedModel = defaultModel?.trim() || savedModel;
   const savedBaseUrl =
     settings.customBaseUrlByProvider[providerId] ?? provider.defaultBaseUrl ?? '';
-  const testedBaseUrl = customBaseUrl.trim() || provider.defaultBaseUrl || '';
-  const savedLocalAccess = Boolean(settings.enabledLocalProviderIds[providerId]);
-  const testedLocalAccess = LOCAL_PROVIDER_IDS.has(providerId)
+  const testedBaseUrl = customBaseUrl.trim() || savedBaseUrl;
+  const savedLocalAccess = requiresLocalAccess(providerId, savedBaseUrl)
+    ? settings.enabledLocalProviderIds[providerId] !== false
+    : false;
+  const testedLocalAccess = requiresLocalAccess(providerId, testedBaseUrl)
     ? Boolean(localAccessEnabled)
     : false;
 
@@ -208,7 +218,8 @@ export async function saveProviderOptions(
   const storageArea = getStorageArea(options.storageArea);
   const trimmedApiKey = apiKey.trim();
   const currentSettings = await getSettings({ storageArea });
-  assertLocalProviderEnabled(providerId, currentSettings, localAccessEnabled);
+  const savedBaseUrl = customBaseUrl.trim() || provider.defaultBaseUrl || '';
+  assertLocalProviderEnabled(providerId, savedBaseUrl, currentSettings, localAccessEnabled);
 
   if (trimmedApiKey || normalizedKeyMode === 'none') {
     await removeValue(providerId, { storageArea });
@@ -229,7 +240,7 @@ export async function saveProviderOptions(
         ...settings,
         customBaseUrlByProvider: {
           ...settings.customBaseUrlByProvider,
-          [providerId]: customBaseUrl.trim() || provider.defaultBaseUrl || '',
+          [providerId]: savedBaseUrl,
         },
         defaultModelByProvider: {
           ...settings.defaultModelByProvider,
@@ -238,7 +249,9 @@ export async function saveProviderOptions(
         defaultProviderId: providerId,
         enabledLocalProviderIds: {
           ...settings.enabledLocalProviderIds,
-          [providerId]: LOCAL_PROVIDER_IDS.has(providerId) ? Boolean(localAccessEnabled) : false,
+          [providerId]: requiresLocalAccess(providerId, savedBaseUrl)
+            ? Boolean(localAccessEnabled)
+            : false,
         },
         keyModeByProvider: {
           ...settings.keyModeByProvider,
@@ -271,12 +284,17 @@ export async function testProviderOptions(
   const resolvedKeyMode = keyMode ?? getExpectedKeyMode(providerId);
   assertValidKeyMode(providerId, resolvedKeyMode);
   const settings = await getSettings(options);
-  assertLocalProviderEnabled(providerId, settings, localAccessEnabled);
+  const savedBaseUrl =
+    settings.customBaseUrlByProvider[providerId] ?? provider.defaultBaseUrl ?? '';
+  const testedBaseUrl = customBaseUrl?.trim() || savedBaseUrl;
+  const savedModel = settings.defaultModelByProvider[providerId] ?? provider.defaultModel;
+  const testedModel = defaultModel?.trim() || savedModel;
+  assertLocalProviderEnabled(providerId, testedBaseUrl, settings, localAccessEnabled);
   const key = await resolveProviderKey(providerId, resolvedKeyMode, apiKey, options);
   const connected = await provider.testConnection(key, {
-    baseUrl: customBaseUrl?.trim() || provider.defaultBaseUrl || '',
+    baseUrl: testedBaseUrl,
     fetchImpl: options.fetchImpl,
-    model: defaultModel?.trim() || provider.defaultModel,
+    model: testedModel,
   });
   const matchesSavedConfig = testMatchesSavedProviderConfig(
     {
@@ -312,7 +330,10 @@ export async function completeOnboarding({ providerId } = {}, options = {}) {
   getProvider(providerId);
   const storageArea = getStorageArea(options.storageArea);
   const settings = await getSettings(options);
-  assertLocalProviderEnabled(providerId, settings, false);
+  const provider = getProvider(providerId);
+  const savedBaseUrl =
+    settings.customBaseUrlByProvider[providerId] ?? provider.defaultBaseUrl ?? '';
+  assertLocalProviderEnabled(providerId, savedBaseUrl, settings, false);
   const keyStatus = await getKeyStatus(providerId, storageArea);
   const providerConfigured = LOCAL_PROVIDER_IDS.has(providerId) || keyStatus.hasKey;
 

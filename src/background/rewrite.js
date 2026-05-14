@@ -7,6 +7,7 @@ import './providers/openai-compatible.js';
 import './providers/openai.js';
 import './providers/openrouter.js';
 
+import { isOllamaBaseUrl } from './providers/local-llms.js';
 import { getProvider } from './providers/index.js';
 import { getEncryptedValue } from './secure-storage.js';
 import { getSettings } from './settings.js';
@@ -268,8 +269,16 @@ export async function rewriteComposeDraft(message, options = {}) {
       code: 'missing_provider',
     });
   }
-  if (LOCAL_PROVIDER_IDS.has(providerId) && !settings.enabledLocalProviderIds?.[providerId]) {
-    throw new RewriteError('Enable local LLM access before rewriting with localhost.', {
+
+  const getProviderImpl = options.getProviderImpl ?? getProvider;
+  const provider = getProviderImpl(providerId);
+  const baseUrl = resolveBaseUrl(provider, message, settings);
+  if (
+    LOCAL_PROVIDER_IDS.has(providerId) &&
+    isOllamaBaseUrl(baseUrl) &&
+    !settings.enabledLocalProviderIds?.[providerId]
+  ) {
+    throw new RewriteError('Enable Ollama localhost access before rewriting.', {
       code: 'local_provider_not_enabled',
     });
   }
@@ -278,9 +287,6 @@ export async function rewriteComposeDraft(message, options = {}) {
       code: 'provider_not_verified',
     });
   }
-
-  const getProviderImpl = options.getProviderImpl ?? getProvider;
-  const provider = getProviderImpl(providerId);
   const instruction = normalizeInstruction(message);
   const details = await thunderbird.compose.getComposeDetails(tabId);
   const tokenized = (options.tokenizeImpl ?? tokenize)(normalizeComposeBody(details));
@@ -291,7 +297,6 @@ export async function rewriteComposeDraft(message, options = {}) {
   const model = resolveModel(provider, message, settings);
   const allowedCidImageHtml = tokenized.media.map((entry) => entry.outerHTML);
   const sanitizeImpl = options.sanitizeImpl ?? allowlistHtml;
-  const baseUrl = resolveBaseUrl(provider, message, settings);
   const rawOutput =
     allowImageRelocation || tokenized.media.length === 0
       ? await rewriteWithRelocatableMedia({

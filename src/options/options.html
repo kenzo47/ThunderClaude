@@ -51,14 +51,19 @@
 
           <label id="local-access-field" class="checkbox-field" hidden>
             <input id="local-access" type="checkbox" />
-            <span>Enable localhost access for Ollama or LM Studio</span>
+            <span>Enable Ollama access on localhost</span>
           </label>
 
           <p id="storage-note" class="key-status">Provider keys are stored encrypted by default.</p>
 
-          <label class="field">
+          <label id="key-field" class="field">
             <span>API key</span>
-            <input id="api-key" autocomplete="off" placeholder="Leave blank to keep existing key" />
+            <input
+              id="api-key"
+              type="password"
+              autocomplete="new-password"
+              placeholder="Leave blank to keep existing key"
+            />
           </label>
 
           <p id="key-status" class="key-status"></p>

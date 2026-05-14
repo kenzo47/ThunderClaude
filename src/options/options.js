@@ -16,6 +16,7 @@ const baseUrl = document.querySelector('#base-url');
 const localAccessField = document.querySelector('#local-access-field');
 const localAccess = document.querySelector('#local-access');
 const storageNote = document.querySelector('#storage-note');
+const keyField = document.querySelector('#key-field');
 const apiKey = document.querySelector('#api-key');
 const keyStatus = document.querySelector('#key-status');
 const errorMessage = document.querySelector('#error');
@@ -23,6 +24,15 @@ const testButton = document.querySelector('#test-provider');
 
 let snapshot = null;
 let selectedProviderId = null;
+
+function isOllamaBaseUrl(value) {
+  try {
+    const url = new URL(value);
+    return url.hostname === 'localhost' && url.port === '11434';
+  } catch {
+    return false;
+  }
+}
 
 function setStatus(message) {
   status.textContent = message;
@@ -94,8 +104,8 @@ function renderProviderForm() {
   customModel.value = visibleModel === 'custom' ? configuredModel : '';
   customModelField.hidden = visibleModel !== 'custom';
   baseUrl.value = config.customBaseUrl || provider.defaultBaseUrl || '';
-  localAccessField.hidden = provider.id !== 'local-llms';
-  localAccess.checked = provider.id === 'local-llms' ? config.localAccessEnabled !== false : false;
+  renderLocalAccess(provider, config);
+  keyField.hidden = provider.id === 'local-llms';
   storageNote.hidden = provider.id === 'local-llms';
   apiKey.value = '';
 
@@ -105,6 +115,13 @@ function renderProviderForm() {
       : config.hasKey
         ? 'An encrypted key is stored for this provider.'
         : 'No encrypted key stored.';
+}
+
+function renderLocalAccess(provider = getSelectedProvider(), config = getSelectedConfig()) {
+  const showLocalAccess = provider.id === 'local-llms' && isOllamaBaseUrl(baseUrl.value.trim());
+
+  localAccessField.hidden = !showLocalAccess;
+  localAccess.checked = showLocalAccess ? config.localAccessEnabled !== false : false;
 }
 
 function render() {
@@ -129,7 +146,10 @@ function providerPayload() {
     customBaseUrl: baseUrl.value.trim(),
     defaultModel: model,
     keyMode: provider.id === 'local-llms' ? 'none' : 'encrypted',
-    localAccessEnabled: provider.id === 'local-llms' ? localAccess.checked : false,
+    localAccessEnabled:
+      provider.id === 'local-llms' && isOllamaBaseUrl(baseUrl.value.trim())
+        ? localAccess.checked
+        : false,
     providerId: provider.id,
   };
 }
@@ -147,6 +167,10 @@ async function refresh() {
 
 defaultModel.addEventListener('change', () => {
   customModelField.hidden = defaultModel.value !== 'custom';
+});
+
+baseUrl.addEventListener('input', () => {
+  renderLocalAccess();
 });
 
 providerForm.addEventListener('submit', async (event) => {

@@ -34,6 +34,15 @@ const finish = document.querySelector('#finish');
 let snapshot = null;
 let selectedProviderId = 'local-llms';
 
+function isOllamaBaseUrl(value) {
+  try {
+    const url = new URL(value);
+    return url.hostname === 'localhost' && url.port === '11434';
+  } catch {
+    return false;
+  }
+}
+
 function setStatus(message) {
   status.textContent = message;
 }
@@ -112,9 +121,15 @@ function renderProviderSettings() {
   customModelField.hidden = defaultModel.value !== 'custom';
   baseUrl.value = provider.defaultBaseUrl || '';
   keyField.hidden = provider.id === 'local-llms';
-  localAccessField.hidden = provider.id !== 'local-llms';
-  localAccess.checked = provider.id === 'local-llms';
+  renderLocalAccess(provider);
   storageNote.hidden = provider.id === 'local-llms';
+}
+
+function renderLocalAccess(provider = getProvider()) {
+  const showLocalAccess = provider.id === 'local-llms' && isOllamaBaseUrl(baseUrl.value.trim());
+
+  localAccessField.hidden = !showLocalAccess;
+  localAccess.checked = showLocalAccess;
 }
 
 function providerPayload() {
@@ -133,8 +148,12 @@ function providerPayload() {
     throw new Error('Enter a provider key.');
   }
 
-  if (provider.id === 'local-llms' && !localAccess.checked) {
-    throw new Error('Enable local LLM access.');
+  if (
+    provider.id === 'local-llms' &&
+    isOllamaBaseUrl(baseUrl.value.trim()) &&
+    !localAccess.checked
+  ) {
+    throw new Error('Enable Ollama localhost access.');
   }
 
   return {
@@ -142,7 +161,10 @@ function providerPayload() {
     customBaseUrl: baseUrl.value.trim(),
     defaultModel: model,
     keyMode: provider.id === 'local-llms' ? 'none' : 'encrypted',
-    localAccessEnabled: provider.id === 'local-llms' ? localAccess.checked : false,
+    localAccessEnabled:
+      provider.id === 'local-llms' && isOllamaBaseUrl(baseUrl.value.trim())
+        ? localAccess.checked
+        : false,
     providerId: provider.id,
   };
 }
@@ -192,6 +214,10 @@ keyBack.addEventListener('click', () => {
 
 defaultModel.addEventListener('change', () => {
   customModelField.hidden = defaultModel.value !== 'custom';
+});
+
+baseUrl.addEventListener('input', () => {
+  renderLocalAccess();
 });
 
 testProviderButton.addEventListener('click', async () => {

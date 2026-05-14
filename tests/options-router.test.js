@@ -181,6 +181,50 @@ describe('options router', () => {
     });
   });
 
+  it('tests a saved encrypted key after the input is cleared', async () => {
+    const calls = [];
+
+    await saveProviderOptions(
+      {
+        apiKey: 'sk-test-fake-key-do-not-use',
+        customBaseUrl: 'https://api.openai.com/v1',
+        defaultModel: 'gpt-5.5',
+        keyMode: 'encrypted',
+        providerId: 'openai',
+      },
+      { storageArea }
+    );
+
+    await expect(
+      testProviderOptions(
+        {
+          apiKey: '',
+          customBaseUrl: 'https://api.openai.com/v1',
+          defaultModel: 'gpt-5.5',
+          keyMode: 'encrypted',
+          providerId: 'openai',
+        },
+        {
+          fetchImpl: async (url, options) => {
+            calls.push({ options, url });
+            return successfulOpenAiResponse();
+          },
+          storageArea,
+        }
+      )
+    ).resolves.toEqual({
+      connected: true,
+      verified: true,
+    });
+
+    expect(calls[0].options.headers.authorization).toBe('Bearer sk-test-fake-key-do-not-use');
+    const snapshot = await getOptionsSnapshot({ storageArea });
+    expect(snapshot.providerConfigs.openai).toMatchObject({
+      hasKey: true,
+      verified: true,
+    });
+  });
+
   it('reports missing keys for encrypted connection tests without a stored key', async () => {
     await expect(
       testProviderOptions(
@@ -215,7 +259,7 @@ describe('options router', () => {
   it('saves explicit local access for Local LLMs', async () => {
     const snapshot = await saveProviderOptions(
       {
-        customBaseUrl: 'http://localhost:1234/v1',
+        customBaseUrl: 'http://localhost:11434',
         defaultModel: 'llama3.2',
         keyMode: 'none',
         localAccessEnabled: true,
@@ -228,9 +272,33 @@ describe('options router', () => {
       'local-llms': true,
     });
     expect(snapshot.providerConfigs['local-llms']).toMatchObject({
-      customBaseUrl: 'http://localhost:1234/v1',
+      customBaseUrl: 'http://localhost:11434',
       keyMode: 'none',
       localAccessEnabled: true,
+      verified: false,
+    });
+  });
+
+  it('saves LM Studio without the Ollama localhost toggle', async () => {
+    const snapshot = await saveProviderOptions(
+      {
+        customBaseUrl: 'http://localhost:1234/v1',
+        defaultModel: 'local-model',
+        keyMode: 'none',
+        localAccessEnabled: false,
+        providerId: 'local-llms',
+      },
+      { storageArea }
+    );
+
+    expect(snapshot.settings.enabledLocalProviderIds).toMatchObject({
+      'local-llms': false,
+    });
+    expect(snapshot.providerConfigs['local-llms']).toMatchObject({
+      customBaseUrl: 'http://localhost:1234/v1',
+      defaultModel: 'local-model',
+      keyMode: 'none',
+      localAccessEnabled: false,
       verified: false,
     });
   });

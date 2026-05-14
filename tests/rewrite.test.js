@@ -359,7 +359,10 @@ describe('rewrite orchestrator', () => {
 
   it('requires explicit local access before rewriting with Local LLMs', async () => {
     const thunderbird = createThunderbird('<p>Hello</p>');
-    const provider = createProvider('<p>Unused</p>');
+    const provider = {
+      ...createProvider('<p>Unused</p>'),
+      defaultBaseUrl: 'http://localhost:11434',
+    };
 
     await expect(
       rewriteComposeDraft(
@@ -373,6 +376,9 @@ describe('rewrite orchestrator', () => {
           getSettingsImpl: async () => ({
             ...getTestSettings(),
             defaultProviderId: 'local-llms',
+            verifiedProviderIds: {
+              'local-llms': true,
+            },
           }),
           getProviderImpl: () => provider,
           resolveProviderCredential: async () => '',

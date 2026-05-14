@@ -102,11 +102,42 @@ describe('local llms provider', () => {
   });
 
   it('returns true for a successful test connection without an API key', async () => {
+    const calls = [];
+
     await expect(
       localLlmsProvider.testConnection('', {
-        fetchImpl: async () => successfulOllamaResponse('OK'),
+        fetchImpl: async (url, options) => {
+          calls.push({ options, url });
+          return jsonResponse({
+            models: [],
+          });
+        },
       })
     ).resolves.toBe(true);
+
+    expect(calls).toHaveLength(1);
+    expect(calls[0].url).toBe('http://localhost:11434/api/tags');
+    expect(calls[0].options.method).toBe('GET');
+  });
+
+  it('tests LM Studio through the OpenAI-compatible models endpoint', async () => {
+    const calls = [];
+
+    await expect(
+      localLlmsProvider.testConnection('', {
+        baseUrl: 'http://localhost:1234/v1',
+        fetchImpl: async (url, options) => {
+          calls.push({ options, url });
+          return jsonResponse({
+            data: [],
+          });
+        },
+      })
+    ).resolves.toBe(true);
+
+    expect(calls).toHaveLength(1);
+    expect(calls[0].url).toBe('http://localhost:1234/v1/models');
+    expect(calls[0].options.method).toBe('GET');
   });
 
   it('returns false when an API key is supplied', async () => {
