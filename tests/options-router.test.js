@@ -238,6 +238,49 @@ describe('options router', () => {
       hasKey: true,
       verified: true,
     });
+    expect(snapshot.settings).toMatchObject({
+      defaultProviderId: 'openai',
+      onboardingComplete: true,
+    });
+  });
+
+  it('repairs legacy snapshots with a verified default provider', async () => {
+    await saveProviderOptions(
+      {
+        apiKey: 'sk-test-fake-key-do-not-use',
+        defaultModel: 'gpt-5.5',
+        keyMode: 'encrypted',
+        providerId: 'openai',
+      },
+      { storageArea }
+    );
+    await testProviderOptions(
+      {
+        defaultModel: 'gpt-5.5',
+        keyMode: 'encrypted',
+        providerId: 'openai',
+      },
+      {
+        fetchImpl: async () => successfulOpenAiResponse(),
+        storageArea,
+      }
+    );
+    await storageArea.set({
+      'thunderclaude.settings': {
+        ...(await getOptionsSnapshot({ storageArea })).settings,
+        onboardingComplete: false,
+      },
+    });
+
+    const snapshot = await getOptionsSnapshot({ storageArea });
+
+    expect(snapshot.settings).toMatchObject({
+      defaultProviderId: 'openai',
+      onboardingComplete: true,
+    });
+    expect(snapshot.providerConfigs.openai).toMatchObject({
+      verified: true,
+    });
   });
 
   it('reports missing keys for encrypted connection tests without a stored key', async () => {

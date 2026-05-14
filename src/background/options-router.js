@@ -196,11 +196,31 @@ function testMatchesSavedProviderConfig(
   );
 }
 
+function findVerifiedProviderId(settings, providers = listProviders()) {
+  if (settings.verifiedProviderIds[settings.defaultProviderId]) {
+    return settings.defaultProviderId;
+  }
+
+  return providers.find((provider) => settings.verifiedProviderIds[provider.id])?.id ?? null;
+}
+
 export async function getOptionsSnapshot(options = {}) {
   const storageArea = getStorageArea(options.storageArea);
-  const settings = await getSettings({ storageArea });
+  let settings = await getSettings({ storageArea });
   const providers = listProviders().map(serializeProvider);
   const providerConfigs = {};
+  const verifiedProviderId = findVerifiedProviderId(settings, providers);
+
+  if (!settings.onboardingComplete && verifiedProviderId) {
+    settings = await updateSettings(
+      (settings) => ({
+        ...settings,
+        defaultProviderId: verifiedProviderId,
+        onboardingComplete: true,
+      }),
+      { storageArea }
+    );
+  }
 
   for (const provider of providers) {
     const keyStatus = await getKeyStatus(provider.id, storageArea);
@@ -337,6 +357,8 @@ export async function testProviderOptions(
     await updateSettings(
       (settings) => ({
         ...settings,
+        defaultProviderId: verified ? providerId : settings.defaultProviderId,
+        onboardingComplete: verified ? true : settings.onboardingComplete,
         verifiedProviderIds: {
           ...settings.verifiedProviderIds,
           [providerId]: verified,

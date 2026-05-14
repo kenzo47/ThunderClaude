@@ -27,6 +27,7 @@ const storageNote = document.querySelector('#storage-note');
 const getStarted = document.querySelector('#get-started');
 const providerNext = document.querySelector('#provider-next');
 const keyBack = document.querySelector('#key-back');
+const saveProviderButton = document.querySelector('#save-provider');
 const testProviderButton = document.querySelector('#test-provider');
 const openOptions = document.querySelector('#open-options');
 const finish = document.querySelector('#finish');
@@ -169,7 +170,7 @@ function providerPayload() {
   };
 }
 
-async function testAndSaveProvider() {
+async function saveProvider() {
   const payload = providerPayload();
 
   await ensureCustomEndpointPermission(
@@ -182,6 +183,17 @@ async function testAndSaveProvider() {
     action: 'options:saveProvider',
     ...payload,
   });
+
+  apiKey.value = '';
+  snapshot = await sendMessage({
+    action: 'options:getSnapshot',
+  });
+
+  return payload;
+}
+
+async function testAndSaveProvider() {
+  const payload = await saveProvider();
 
   const testResult = await sendMessage({
     action: 'options:testProvider',
@@ -220,6 +232,22 @@ defaultModel.addEventListener('change', () => {
 
 baseUrl.addEventListener('input', () => {
   renderLocalAccess();
+});
+
+saveProviderButton.addEventListener('click', async () => {
+  setError(null);
+  saveProviderButton.disabled = true;
+  setStatus('Saving provider settings...');
+
+  try {
+    await saveProvider();
+    setStatus('Provider settings saved. Test the connection to finish setup.');
+  } catch (error) {
+    setError(error.message);
+    setStatus('Provider setup needs attention.');
+  } finally {
+    saveProviderButton.disabled = false;
+  }
 });
 
 testProviderButton.addEventListener('click', async () => {

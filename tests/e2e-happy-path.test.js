@@ -206,6 +206,59 @@ describe('end-to-end happy path', () => {
     ]);
   });
 
+  it('treats a verified provider from options as setup complete', async () => {
+    await router({
+      action: 'options:saveProvider',
+      apiKey: 'sk-test-fake-key-do-not-use',
+      defaultModel: 'mock-model',
+      keyMode: 'encrypted',
+      providerId: 'mock-e2e',
+    });
+
+    await expect(
+      router({
+        action: 'options:testProvider',
+        defaultModel: 'mock-model',
+        keyMode: 'encrypted',
+        providerId: 'mock-e2e',
+      })
+    ).resolves.toMatchObject({
+      ok: true,
+      result: {
+        connected: true,
+        verified: true,
+      },
+    });
+
+    await expect(
+      router({
+        action: 'options:getSnapshot',
+      })
+    ).resolves.toMatchObject({
+      ok: true,
+      result: {
+        settings: {
+          defaultProviderId: 'mock-e2e',
+          onboardingComplete: true,
+        },
+      },
+    });
+
+    await expect(
+      router({
+        action: 'rewrite',
+        preset: 'make-formal',
+        providerId: 'mock-e2e',
+        tabId: 42,
+      })
+    ).resolves.toMatchObject({
+      ok: true,
+      result: {
+        providerId: 'mock-e2e',
+      },
+    });
+  });
+
   it('keeps inline images ordered when relocation is disabled', async () => {
     thunderbird = createThunderbird('<p>Hello<img src="cid:first"><img src="cid:second"></p>');
     router = createMessageRouter({ storageArea, thunderbird });
