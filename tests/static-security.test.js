@@ -65,4 +65,16 @@ describe('static extension security', () => {
       expect(source, file).not.toMatch(/\bconsole\.(?:warn|error)\s*\(/);
     }
   });
+
+  it('does not open direct network channels outside provider plumbing', async () => {
+    for (const file of await listSourceFiles()) {
+      const source = await readProjectFile(file);
+
+      expect(source, file).not.toMatch(/\bfetch\s*\(/);
+      expect(source, file).not.toMatch(/\bXMLHttpRequest\b/);
+      expect(source, file).not.toMatch(/\bWebSocket\b/);
+      expect(source, file).not.toMatch(/\bEventSource\b/);
+      expect(source, file).not.toMatch(/\bsendBeacon\s*\(/);
+    }
+  });
 });
