@@ -77,4 +77,16 @@ describe('static extension security', () => {
       expect(source, file).not.toMatch(/\bsendBeacon\s*\(/);
     }
   });
+
+  it('keeps compose body writes in the rewrite orchestrator', async () => {
+    for (const file of await listSourceFiles()) {
+      const source = await readProjectFile(file);
+
+      if (file === 'src/background/rewrite.js') {
+        expect(source, file).toMatch(/\bcompose\.setComposeDetails\s*\(/);
+      } else {
+        expect(source, file).not.toMatch(/\bcompose\.setComposeDetails\s*\(/);
+      }
+    }
+  });
 });
