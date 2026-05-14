@@ -6,6 +6,7 @@ const rootDir = new URL('../', import.meta.url);
 const distDir = new URL('dist/', rootDir);
 const unpackedDir = new URL('unpacked/', distDir);
 const pathsToCopy = ['manifest.json', '_locales', 'icons', 'src'];
+const pathsToPrune = ['src/_locales'];
 const manifest = JSON.parse(await readFile(new URL('manifest.json', rootDir), 'utf8'));
 const xpiName = `thunderclaude-${manifest.version}.xpi`;
 
@@ -53,6 +54,13 @@ for (const path of pathsToCopy) {
   const source = new URL(path, rootDir);
   if (existsSync(source)) {
     await cp(source, new URL(path, unpackedDir), { recursive: true });
+  }
+}
+
+for (const path of pathsToPrune) {
+  const target = new URL(path, unpackedDir);
+  if (existsSync(target)) {
+    await rm(target, { force: true, recursive: true });
   }
 }
 
