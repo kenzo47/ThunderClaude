@@ -13,7 +13,6 @@ const PROVIDER_HOST_PERMISSIONS = [
   'https://openrouter.ai/*',
 ];
 const OPTIONAL_OPENAI_COMPATIBLE_HOST_PERMISSIONS = [
-  'https://*/*',
   'http://localhost/*',
   'http://127.0.0.1/*',
   'http://[::1]/*',
