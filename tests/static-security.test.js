@@ -70,10 +70,12 @@ describe('static extension security', () => {
     for (const file of await listSourceFiles()) {
       const source = await readProjectFile(file);
 
+      expect(source, file).not.toMatch(/\b(?:globalThis|window|self)\.fetch\b/);
       expect(source, file).not.toMatch(/\bfetch\s*\(/);
       expect(source, file).not.toMatch(/\bXMLHttpRequest\b/);
       expect(source, file).not.toMatch(/\bWebSocket\b/);
       expect(source, file).not.toMatch(/\bEventSource\b/);
+      expect(source, file).not.toMatch(/\bnavigator\.sendBeacon\b/);
       expect(source, file).not.toMatch(/\bsendBeacon\s*\(/);
     }
   });
