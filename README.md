@@ -1,3 +1,7 @@
+<p align="center">
+  <img src="docs/branding/banner.webp" alt="ThunderClaude — AI-powered email rewriting for Thunderbird" width="100%" />
+</p>
+
 # ThunderClaude
 
 ThunderClaude is a Thunderbird MailExtension for rewriting the current
@@ -94,17 +98,23 @@ https://support.mozilla.org/kb/installing-addon-thunderbird
 Release signing notes live in `docs/RELEASE.md`.
 Manual Thunderbird verification steps live in `docs/MANUAL-VERIFY.md`.
 
+## Branding
+
+- `docs/branding/logo.webp` and `logo.png` — 1254×1254 master icon. The
+  shipped `icons/icon-{16,32,48,96}.png` files are downscaled from this
+  master.
+- `docs/branding/banner.webp` and `banner.png` — 2172×724 listing banner
+  used at the top of this README and on the ATN listing.
+
 ## Screenshots
 
-Screenshots will be added before the first publishable release.
+Screenshots will be added before tagging `v0.1.0`.
 
 Planned captures:
 
-- `docs/screenshots/onboarding.png`: provider setup and encrypted key storage.
+- `docs/screenshots/onboarding.png`: provider setup and at-rest encryption note.
 - `docs/screenshots/popup.png`: compose-action rewrite controls.
 - `docs/screenshots/options.png`: provider and key settings.
-
-The first publishable build will be tagged `v0.1.0`.
 
 ## License
 
