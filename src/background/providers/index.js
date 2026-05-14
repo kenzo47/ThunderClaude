@@ -103,18 +103,16 @@ export function extractTextBlocks(body) {
 }
 
 export function extractChatCompletionText(body) {
-  if (!Array.isArray(body?.choices)) {
+  if (!Array.isArray(body?.choices) || body.choices.length === 0) {
     throw new ProviderError('Provider response did not include choices.', {
       code: 'malformed_response',
     });
   }
 
-  const text = body.choices
-    .map((choice) => choice?.message?.content ?? choice?.text)
-    .filter((content) => typeof content === 'string')
-    .join('');
+  const choice = body.choices[0];
+  const text = choice?.message?.content ?? choice?.text;
 
-  if (!text) {
+  if (typeof text !== 'string' || !text) {
     throw new ProviderError('Provider response did not include text content.', {
       code: 'empty_response',
     });
