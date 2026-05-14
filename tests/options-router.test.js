@@ -317,6 +317,53 @@ describe('options router', () => {
     });
   });
 
+  it('keeps saved verification when testing unsaved settings', async () => {
+    await unlockOptionsSession({ storagePhrase: 'storage phrase' }, { storageArea });
+    await saveProviderOptions(
+      {
+        apiKey: 'sk-test-fake-key-do-not-use',
+        defaultModel: 'gpt-5.4',
+        keyMode: 'encrypted',
+        providerId: 'openai',
+      },
+      { storageArea }
+    );
+    await testProviderOptions(
+      {
+        defaultModel: 'gpt-5.4',
+        keyMode: 'encrypted',
+        providerId: 'openai',
+      },
+      {
+        fetchImpl: async () => successfulOpenAiResponse(),
+        storageArea,
+      }
+    );
+
+    await expect(
+      testProviderOptions(
+        {
+          apiKey: 'sk-test-other-key-do-not-use',
+          defaultModel: 'gpt-5.4',
+          keyMode: 'encrypted',
+          providerId: 'openai',
+        },
+        {
+          fetchImpl: async () => successfulOpenAiResponse(),
+          storageArea,
+        }
+      )
+    ).resolves.toEqual({
+      connected: true,
+      verified: false,
+    });
+
+    const snapshot = await getOptionsSnapshot({ storageArea });
+    expect(snapshot.providerConfigs.openai).toMatchObject({
+      verified: true,
+    });
+  });
+
   it('marks onboarding complete for a configured and verified provider', async () => {
     await saveProviderOptions(
       {

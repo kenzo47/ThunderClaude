@@ -296,31 +296,32 @@ export async function testProviderOptions(
     fetchImpl: options.fetchImpl,
     model: defaultModel?.trim() || provider.defaultModel,
   });
-  const verified = connected
-    ? testMatchesSavedProviderConfig(
-        {
-          apiKey,
-          customBaseUrl,
-          defaultModel,
-          keyMode: resolvedKeyMode,
-          localAccessEnabled,
-          provider,
-          providerId,
-        },
-        settings
-      )
-    : false;
-
-  await updateSettings(
-    (settings) => ({
-      ...settings,
-      verifiedProviderIds: {
-        ...settings.verifiedProviderIds,
-        [providerId]: verified,
-      },
-    }),
-    options
+  const matchesSavedConfig = testMatchesSavedProviderConfig(
+    {
+      apiKey,
+      customBaseUrl,
+      defaultModel,
+      keyMode: resolvedKeyMode,
+      localAccessEnabled,
+      provider,
+      providerId,
+    },
+    settings
   );
+  const verified = connected && matchesSavedConfig;
+
+  if (matchesSavedConfig) {
+    await updateSettings(
+      (settings) => ({
+        ...settings,
+        verifiedProviderIds: {
+          ...settings.verifiedProviderIds,
+          [providerId]: verified,
+        },
+      }),
+      options
+    );
+  }
 
   return { connected, verified };
 }
