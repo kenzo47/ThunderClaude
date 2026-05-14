@@ -3,21 +3,6 @@ import { ensureCustomEndpointPermission } from '../lib/host-permissions.js';
 
 const thunderbird = globalThis.messenger ?? globalThis.browser;
 
-const FALLBACK_PROVIDERS = [
-  {
-    defaultModel: 'claude-opus-4-7',
-    id: 'anthropic',
-    label: 'Anthropic',
-    modelList: ['claude-opus-4-7', 'claude-sonnet-4-6', 'claude-haiku-4-5'],
-  },
-  {
-    defaultModel: 'gpt-5.4',
-    id: 'openai',
-    label: 'OpenAI',
-    modelList: ['gpt-5.5', 'gpt-5.4', 'gpt-5.4-mini', 'gpt-4.1-nano'],
-  },
-];
-
 const status = document.querySelector('#status');
 const composeMode = document.querySelector('#compose-mode');
 const form = document.querySelector('#rewrite-form');
@@ -39,7 +24,7 @@ const presetButtons = [...document.querySelectorAll('[data-preset]')];
 
 let activeTabId = null;
 let optionsSnapshot = null;
-let providers = FALLBACK_PROVIDERS;
+let providers = [];
 let selectedPreset = 'make-formal';
 
 function setError(message) {
@@ -102,6 +87,10 @@ async function loadOptionsSnapshot() {
     providers = optionsSnapshot.providers;
   } catch (error) {
     warn('ThunderClaude popup could not load defaults.', error);
+    setControlsDisabled(true);
+    setError('ThunderClaude settings failed to load. Open options and try again.');
+    status.textContent = 'Settings unavailable.';
+    return false;
   }
 
   return true;

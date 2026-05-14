@@ -89,4 +89,10 @@ describe('static extension security', () => {
       }
     }
   });
+
+  it('does not ship fallback popup providers before onboarding is verified', async () => {
+    const source = await readProjectFile('src/popup/popup.js');
+
+    expect(source).not.toMatch(/\bFALLBACK_PROVIDERS\b/);
+  });
 });
