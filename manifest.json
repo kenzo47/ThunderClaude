@@ -30,6 +30,12 @@
     "https://generativelanguage.googleapis.com/*",
     "https://openrouter.ai/*"
   ],
+  "optional_host_permissions": [
+    "https://*/*",
+    "http://localhost/*",
+    "http://127.0.0.1/*",
+    "http://[::1]/*"
+  ],
   "background": {
     "scripts": ["src/background/index.js"],
     "type": "module"

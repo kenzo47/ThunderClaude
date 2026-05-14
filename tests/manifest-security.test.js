@@ -11,6 +11,12 @@ const PROVIDER_HOST_PERMISSIONS = [
   'https://generativelanguage.googleapis.com/*',
   'https://openrouter.ai/*',
 ];
+const OPTIONAL_OPENAI_COMPATIBLE_HOST_PERMISSIONS = [
+  'https://*/*',
+  'http://localhost/*',
+  'http://127.0.0.1/*',
+  'http://[::1]/*',
+];
 
 async function readManifest() {
   return JSON.parse(await readFile(new URL('../manifest.json', import.meta.url), 'utf8'));
@@ -34,6 +40,14 @@ describe('manifest security metadata', () => {
       expect(permission).not.toMatch(/^\*:/);
       expect(permission).not.toMatch(/:\/\/\*\./);
     }
+  });
+
+  it('keeps custom endpoint hosts optional and user-granted', async () => {
+    const manifest = await readManifest();
+
+    expect(manifest.optional_host_permissions).toEqual(OPTIONAL_OPENAI_COMPATIBLE_HOST_PERMISSIONS);
+    expect(manifest.optional_host_permissions).not.toContain('<all_urls>');
+    expect(manifest.optional_host_permissions).not.toContain('*://*/*');
   });
 
   it('declares provider credential and draft transfer categories', async () => {

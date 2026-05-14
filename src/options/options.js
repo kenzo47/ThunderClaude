@@ -1,4 +1,5 @@
 import { warn } from '../lib/log.js';
+import { ensureCustomEndpointPermission } from '../lib/host-permissions.js';
 
 const thunderbird = globalThis.messenger ?? globalThis.browser;
 
@@ -191,9 +192,15 @@ providerForm.addEventListener('submit', async (event) => {
   setError(null);
 
   try {
+    const payload = providerPayload();
+    await ensureCustomEndpointPermission(
+      payload.providerId,
+      payload.customBaseUrl,
+      thunderbird.permissions
+    );
     snapshot = await sendMessage({
       action: 'options:saveProvider',
-      ...providerPayload(),
+      ...payload,
     });
     apiKey.value = '';
     render();
@@ -209,9 +216,15 @@ testButton.addEventListener('click', async () => {
   setStatus('Testing provider connection...');
 
   try {
+    const payload = providerPayload();
+    await ensureCustomEndpointPermission(
+      payload.providerId,
+      payload.customBaseUrl,
+      thunderbird.permissions
+    );
     const result = await sendMessage({
       action: 'options:testProvider',
-      ...providerPayload(),
+      ...payload,
     });
     setStatus(result.connected ? 'Connection test passed.' : 'Connection test failed.');
   } catch (error) {

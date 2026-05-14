@@ -1,4 +1,5 @@
 import { warn } from '../lib/log.js';
+import { ensureCustomEndpointPermission } from '../lib/host-permissions.js';
 
 const thunderbird = globalThis.messenger ?? globalThis.browser;
 
@@ -173,6 +174,12 @@ function providerPayload() {
 
 async function testAndSaveProvider() {
   const payload = providerPayload();
+
+  await ensureCustomEndpointPermission(
+    payload.providerId,
+    payload.customBaseUrl,
+    thunderbird.permissions
+  );
 
   if (payload.keyMode === 'encrypted') {
     if (!storagePhrase.value.trim()) {
