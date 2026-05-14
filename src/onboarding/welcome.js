@@ -200,9 +200,10 @@ async function testAndSaveProvider() {
   const testResult = await sendMessage({
     action: 'options:testProvider',
     ...payload,
+    apiKey: '',
   });
 
-  if (!testResult.connected) {
+  if (!testResult.connected || !testResult.verified) {
     throw new Error('Connection test failed.');
   }
 

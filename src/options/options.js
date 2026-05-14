@@ -226,7 +226,13 @@ testButton.addEventListener('click', async () => {
       action: 'options:testProvider',
       ...payload,
     });
-    setStatus(result.connected ? 'Connection test passed.' : 'Connection test failed.');
+    setStatus(
+      result.verified
+        ? 'Connection test passed.'
+        : result.connected
+          ? 'Connection test passed for unsaved settings.'
+          : 'Connection test failed.'
+    );
   } catch (error) {
     setError(error.message);
     setStatus('Connection test failed.');

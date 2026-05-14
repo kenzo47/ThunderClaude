@@ -47,6 +47,27 @@ function successfulOllamaResponse(text = 'OK') {
   };
 }
 
+function successfulOpenAiResponse(text = 'OK') {
+  return {
+    ok: true,
+    status: 200,
+    async json() {
+      return {
+        output: [
+          {
+            content: [
+              {
+                text,
+                type: 'output_text',
+              },
+            ],
+          },
+        ],
+      };
+    },
+  };
+}
+
 describe('options router', () => {
   let storageArea;
 
@@ -249,6 +270,41 @@ describe('options router', () => {
     });
   });
 
+  it('does not verify saved settings with an unsaved replacement key', async () => {
+    await saveProviderOptions(
+      {
+        apiKey: 'sk-test-fake-key-do-not-use',
+        defaultModel: 'gpt-5.4',
+        keyMode: 'plain',
+        providerId: 'openai',
+      },
+      { storageArea }
+    );
+
+    await expect(
+      testProviderOptions(
+        {
+          apiKey: 'sk-test-other-key-do-not-use',
+          defaultModel: 'gpt-5.4',
+          keyMode: 'plain',
+          providerId: 'openai',
+        },
+        {
+          fetchImpl: async () => successfulOpenAiResponse(),
+          storageArea,
+        }
+      )
+    ).resolves.toEqual({
+      connected: true,
+      verified: false,
+    });
+
+    const snapshot = await getOptionsSnapshot({ storageArea });
+    expect(snapshot.providerConfigs.openai).toMatchObject({
+      verified: false,
+    });
+  });
+
   it('marks onboarding complete for a configured and verified provider', async () => {
     await saveProviderOptions(
       {
@@ -273,6 +329,7 @@ describe('options router', () => {
       )
     ).resolves.toEqual({
       connected: true,
+      verified: true,
     });
 
     const settings = await completeOnboarding({ providerId: 'ollama' }, { storageArea });

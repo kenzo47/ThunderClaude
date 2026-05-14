@@ -118,6 +118,42 @@ function assertLocalProviderEnabled(providerId, settings, localAccessEnabled) {
   });
 }
 
+function testMatchesSavedProviderConfig(
+  {
+    apiKey = '',
+    customBaseUrl = '',
+    defaultModel,
+    keyMode,
+    localAccessEnabled = false,
+    provider,
+    providerId,
+  },
+  settings
+) {
+  if (apiKey.trim()) {
+    return false;
+  }
+
+  const resolvedKeyMode = keyMode ?? (providerId === 'ollama' ? 'none' : 'encrypted');
+  const savedKeyMode =
+    settings.keyModeByProvider[providerId] ?? (providerId === 'ollama' ? 'none' : 'encrypted');
+  const savedModel = settings.defaultModelByProvider[providerId] ?? provider.defaultModel;
+  const testedModel = defaultModel?.trim() || provider.defaultModel;
+  const savedBaseUrl = settings.customBaseUrlByProvider[providerId] ?? '';
+  const testedBaseUrl = providerId === 'openai-compatible' ? customBaseUrl.trim() : '';
+  const savedLocalAccess = Boolean(settings.enabledLocalProviderIds[providerId]);
+  const testedLocalAccess = LOCAL_PROVIDER_IDS.has(providerId)
+    ? Boolean(localAccessEnabled)
+    : false;
+
+  return (
+    resolvedKeyMode === savedKeyMode &&
+    testedModel === savedModel &&
+    testedBaseUrl === savedBaseUrl &&
+    testedLocalAccess === savedLocalAccess
+  );
+}
+
 export async function getOptionsSnapshot(options = {}) {
   const storageArea = getStorageArea(options.storageArea);
   const settings = await getSettings({ storageArea });
@@ -256,19 +292,33 @@ export async function testProviderOptions(
     fetchImpl: options.fetchImpl,
     model: defaultModel?.trim() || provider.defaultModel,
   });
+  const verified = connected
+    ? testMatchesSavedProviderConfig(
+        {
+          apiKey,
+          customBaseUrl,
+          defaultModel,
+          keyMode: resolvedKeyMode,
+          localAccessEnabled,
+          provider,
+          providerId,
+        },
+        settings
+      )
+    : false;
 
   await updateSettings(
     (settings) => ({
       ...settings,
       verifiedProviderIds: {
         ...settings.verifiedProviderIds,
-        [providerId]: connected,
+        [providerId]: verified,
       },
     }),
     options
   );
 
-  return { connected };
+  return { connected, verified };
 }
 
 export async function completeOnboarding({ providerId } = {}, options = {}) {
