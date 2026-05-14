@@ -182,6 +182,35 @@ describe('rewrite orchestrator', () => {
     expect(thunderbird.setCalls[0].details.body).toBe('<p>Bonjour</p>');
   });
 
+  it('preserves detected signatures outside the LLM rewrite', async () => {
+    const providerCalls = [];
+    const thunderbird = createThunderbird(
+      '<p>Hello</p><div class="moz-signature">-- <br><span style="color: blue">Ken</span></div>'
+    );
+    const provider = createProvider('<p>Formal hello</p>', providerCalls);
+
+    await rewriteComposeDraft(
+      {
+        action: 'rewrite',
+        preset: 'make-formal',
+        providerId: 'test-provider',
+        tabId: 7,
+      },
+      {
+        getSettingsImpl: async () => getTestSettings(),
+        getProviderImpl: () => provider,
+        resolveProviderCredential: async () => 'stored-provider-key',
+        thunderbird,
+      }
+    );
+
+    expect(providerCalls[0].user).toContain('<p>Hello</p>');
+    expect(providerCalls[0].user).not.toContain('Ken');
+    expect(thunderbird.setCalls[0].details.body).toBe(
+      '<p>Formal hello</p><div>-- <br><span style="color: blue">Ken</span></div>'
+    );
+  });
+
   it('builds translate instructions with a target language', async () => {
     const providerCalls = [];
     const thunderbird = createThunderbird('<p>Hello</p>');

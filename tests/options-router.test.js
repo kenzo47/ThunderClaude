@@ -4,6 +4,7 @@ import {
   completeOnboarding,
   getOptionsSnapshot,
   saveProviderOptions,
+  setThemeOptions,
   testProviderOptions,
 } from '../src/background/options-router.js';
 import { getStorageKeys } from '../src/background/secure-storage.js';
@@ -96,6 +97,7 @@ describe('options router', () => {
     expect(snapshot.settings.defaultProviderId).toBe('anthropic');
     expect(snapshot.settings.enabledLocalProviderIds).toEqual({});
     expect(snapshot.settings.onboardingComplete).toBe(false);
+    expect(snapshot.settings.theme).toBe('light');
     expect(snapshot.providerConfigs.anthropic).toMatchObject({
       customBaseUrl: 'https://api.anthropic.com/v1',
       defaultModel: 'claude-opus-4-7',
@@ -113,6 +115,16 @@ describe('options router', () => {
       alternateBaseUrls: ['http://localhost:11434/api', 'http://localhost:1234/v1'],
       label: 'Local LLMs',
     });
+  });
+
+  it('saves the selected theme', async () => {
+    await expect(setThemeOptions({ theme: 'dark' }, { storageArea })).resolves.toMatchObject({
+      theme: 'dark',
+    });
+
+    const snapshot = await getOptionsSnapshot({ storageArea });
+
+    expect(snapshot.settings.theme).toBe('dark');
   });
 
   it('removes legacy plaintext key entries from snapshots', async () => {

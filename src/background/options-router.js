@@ -412,6 +412,18 @@ export async function completeOnboarding({ providerId } = {}, options = {}) {
   );
 }
 
+export async function setThemeOptions({ theme } = {}, options = {}) {
+  const normalizedTheme = theme === 'dark' ? 'dark' : 'light';
+
+  return updateSettings(
+    (settings) => ({
+      ...settings,
+      theme: normalizedTheme,
+    }),
+    options
+  );
+}
+
 export async function handleOptionsMessage(message, options = {}) {
   if (message?.action === 'options:getSnapshot') {
     return getOptionsSnapshot(options);
@@ -427,6 +439,10 @@ export async function handleOptionsMessage(message, options = {}) {
 
   if (message?.action === 'options:completeOnboarding') {
     return completeOnboarding(message, options);
+  }
+
+  if (message?.action === 'options:setTheme') {
+    return setThemeOptions(message, options);
   }
 
   return undefined;

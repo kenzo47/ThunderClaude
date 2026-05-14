@@ -13,6 +13,7 @@ import { getEncryptedValue } from './secure-storage.js';
 import { getSettings } from './settings.js';
 import { restore, tokenize } from './inline-media.js';
 import { handleOptionsMessage } from './options-router.js';
+import { splitSignature } from './signature.js';
 import { hasRewriteableText, splitAroundInlineMediaTokens } from '../lib/html-segments.js';
 import { allowlistHtml } from '../lib/sanitize.js';
 
@@ -289,13 +290,20 @@ export async function rewriteComposeDraft(message, options = {}) {
   }
   const instruction = normalizeInstruction(message);
   const details = await thunderbird.compose.getComposeDetails(tabId);
-  const tokenized = (options.tokenizeImpl ?? tokenize)(normalizeComposeBody(details));
+  const composeBody = normalizeComposeBody(details);
+  const signatureSplit = (options.splitSignatureImpl ?? splitSignature)(composeBody);
+  const tokenized = (options.tokenizeImpl ?? tokenize)(signatureSplit.bodyHtml);
+  const tokenizedSignature = signatureSplit.signatureHtml
+    ? (options.tokenizeImpl ?? tokenize)(signatureSplit.signatureHtml)
+    : { media: [], mediaMap: new Map(), text: '' };
   const allowImageRelocation = message?.allowImageRelocation !== false;
   const resolveProviderCredential =
     options.resolveProviderCredential ?? defaultResolveProviderCredential;
   const key = await resolveProviderCredential(providerId, options);
   const model = resolveModel(provider, message, settings);
-  const allowedCidImageHtml = tokenized.media.map((entry) => entry.outerHTML);
+  const allowedCidImageHtml = [...tokenized.media, ...tokenizedSignature.media].map(
+    (entry) => entry.outerHTML
+  );
   const sanitizeImpl = options.sanitizeImpl ?? allowlistHtml;
   const rawOutput =
     allowImageRelocation || tokenized.media.length === 0
@@ -324,7 +332,10 @@ export async function rewriteComposeDraft(message, options = {}) {
   const restoredOutput = (options.restoreImpl ?? restore)(sanitizedOutput, tokenized.mediaMap, {
     requireOriginalOrder: !allowImageRelocation,
   });
-  const body = (options.sanitizeImpl ?? allowlistHtml)(restoredOutput, {
+  const restoredSignature = tokenizedSignature.text
+    ? (options.restoreImpl ?? restore)(tokenizedSignature.text, tokenizedSignature.mediaMap)
+    : '';
+  const body = (options.sanitizeImpl ?? allowlistHtml)(`${restoredOutput}${restoredSignature}`, {
     allowedCidImageHtml,
   });
 

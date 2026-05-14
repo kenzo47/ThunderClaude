@@ -21,6 +21,10 @@ let optionsSnapshot = null;
 let providers = [];
 let selectedPreset = 'make-formal';
 
+function applyTheme(theme) {
+  document.documentElement.dataset.theme = theme === 'dark' ? 'dark' : 'light';
+}
+
 function setError(message) {
   errorMessage.hidden = !message;
   errorMessage.textContent = message ?? '';
@@ -78,6 +82,7 @@ async function loadOptionsSnapshot() {
     optionsSnapshot = await sendMessage({
       action: 'options:getSnapshot',
     });
+    applyTheme(optionsSnapshot.settings.theme);
 
     if (!optionsSnapshot.settings.onboardingComplete) {
       setControlsDisabled(true);
@@ -189,6 +194,12 @@ async function currentPayload() {
     if (!selectionText) {
       throw new Error('Select text in the compose window to draft a reply.');
     }
+  } else {
+    selectionText = await getSelectedText().catch(() => '');
+
+    if (!selectionText && !globalThis.confirm('Rewrite full mail?')) {
+      throw new Error('Rewrite canceled.');
+    }
   }
 
   return {
@@ -206,7 +217,11 @@ async function currentPayload() {
 }
 
 async function detectComposeTab() {
-  const [tab] = await thunderbird.tabs.query({ active: true, currentWindow: true });
+  const requestedTabIdParam = new URL(globalThis.location.href).searchParams.get('composeTabId');
+  const requestedTabId = requestedTabIdParam === null ? null : Number(requestedTabIdParam);
+  const [tab] = Number.isInteger(requestedTabId)
+    ? [{ id: requestedTabId }]
+    : await thunderbird.tabs.query({ active: true, currentWindow: true });
 
   if (!tab?.id) {
     throw new Error('Open a compose window to use ThunderClaude.');

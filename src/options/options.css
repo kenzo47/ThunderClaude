@@ -16,6 +16,23 @@
   font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', system-ui, sans-serif;
 }
 
+:root[data-theme='dark'] {
+  color-scheme: dark;
+  --surface: oklch(0.18 0.012 245);
+  --panel: oklch(0.225 0.014 245);
+  --panel-muted: oklch(0.28 0.016 245);
+  --text: oklch(0.93 0.008 245);
+  --muted: oklch(0.72 0.015 245);
+  --line: oklch(0.36 0.018 245);
+  --accent: oklch(0.66 0.14 252);
+  --accent-strong: oklch(0.78 0.12 252);
+  --accent-soft: oklch(0.31 0.06 252);
+  --danger: oklch(0.78 0.12 28);
+  --danger-soft: oklch(0.28 0.045 28);
+  --warning: oklch(0.82 0.11 72);
+  --warning-soft: oklch(0.29 0.045 72);
+}
+
 * {
   box-sizing: border-box;
 }
@@ -49,6 +66,13 @@ select {
 .panel h2 {
   letter-spacing: 0;
   margin: 0;
+}
+
+.page-header {
+  align-items: center;
+  display: flex;
+  gap: 16px;
+  justify-content: space-between;
 }
 
 .page-header h1 {
@@ -129,6 +153,21 @@ p {
   font-weight: 700;
 }
 
+.theme-toggle {
+  align-items: center;
+  color: var(--muted);
+  display: flex;
+  flex: 0 0 auto;
+  font-size: 13px;
+  font-weight: 700;
+  gap: 8px;
+}
+
+.theme-toggle input {
+  height: 16px;
+  width: 16px;
+}
+
 .provider-heading {
   align-items: start;
   display: flex;
@@ -161,7 +200,7 @@ p {
 
 input,
 select {
-  background: oklch(0.998 0.003 235);
+  background: var(--panel);
   border: 1px solid var(--line);
   border-radius: 7px;
   height: 36px;
@@ -229,7 +268,7 @@ button {
 }
 
 button:hover:not(:disabled) {
-  background: oklch(0.925 0.018 235);
+  background: var(--panel-muted);
 }
 
 .primary-action {
@@ -257,5 +296,10 @@ select:disabled {
 
   .settings-layout {
     grid-template-columns: 1fr;
+  }
+
+  .page-header {
+    align-items: start;
+    flex-direction: column;
   }
 }

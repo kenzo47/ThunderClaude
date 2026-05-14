@@ -7,6 +7,7 @@ export const DEFAULT_SETTINGS = Object.freeze({
   enabledLocalProviderIds: {},
   keyModeByProvider: {},
   onboardingComplete: false,
+  theme: 'light',
   verifiedProviderIds: {},
 });
 
@@ -41,6 +42,7 @@ function normalizeSettings(settings = {}) {
       ...(settings.keyModeByProvider ?? {}),
     },
     onboardingComplete: Boolean(settings.onboardingComplete),
+    theme: settings.theme === 'dark' ? 'dark' : DEFAULT_SETTINGS.theme,
     verifiedProviderIds: {
       ...DEFAULT_SETTINGS.verifiedProviderIds,
       ...(settings.verifiedProviderIds ?? {}),

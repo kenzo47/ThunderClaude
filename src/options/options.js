@@ -21,6 +21,7 @@ const apiKey = document.querySelector('#api-key');
 const keyStatus = document.querySelector('#key-status');
 const errorMessage = document.querySelector('#error');
 const testButton = document.querySelector('#test-provider');
+const themeToggle = document.querySelector('#theme-toggle');
 
 let snapshot = null;
 let selectedProviderId = null;
@@ -41,6 +42,11 @@ function setStatus(message) {
 function setError(message) {
   errorMessage.hidden = !message;
   errorMessage.textContent = message ?? '';
+}
+
+function applyTheme(theme) {
+  document.documentElement.dataset.theme = theme === 'dark' ? 'dark' : 'light';
+  themeToggle.checked = theme === 'dark';
 }
 
 function createOption(value, label = value) {
@@ -162,6 +168,7 @@ async function refresh() {
   if (!snapshot.providers.some((provider) => provider.id === selectedProviderId)) {
     selectedProviderId = snapshot.providers[0].id;
   }
+  applyTheme(snapshot.settings.theme);
   render();
 }
 
@@ -224,6 +231,27 @@ testButton.addEventListener('click', async () => {
     setStatus('Connection test failed.');
   } finally {
     testButton.disabled = false;
+  }
+});
+
+themeToggle.addEventListener('change', async () => {
+  setError(null);
+  const theme = themeToggle.checked ? 'dark' : 'light';
+  applyTheme(theme);
+
+  try {
+    const settings = await sendMessage({
+      action: 'options:setTheme',
+      theme,
+    });
+    snapshot = {
+      ...snapshot,
+      settings,
+    };
+    setStatus('Theme saved.');
+  } catch (error) {
+    setError(error.message);
+    applyTheme(snapshot?.settings?.theme);
   }
 });
 
