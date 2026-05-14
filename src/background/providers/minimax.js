@@ -2,7 +2,7 @@ import { extractChatCompletionText, fetchProviderJson, registerProvider } from '
 
 const ENDPOINT_HOST = 'api.minimax.io';
 const DEFAULT_BASE_URL = `https://${ENDPOINT_HOST}/v1`;
-const DEFAULT_MAX_TOKENS = 4096;
+const DEFAULT_MAX_TOKENS = 2048;
 
 function createChatCompletionsUrl(baseUrl = DEFAULT_BASE_URL) {
   const url = new URL(baseUrl);
@@ -22,11 +22,12 @@ async function createChatCompletion({
   signal,
   fetchImpl,
   maxTokens = DEFAULT_MAX_TOKENS,
+  reasoningSplit = true,
 }) {
   const url = createChatCompletionsUrl(baseUrl);
   const body = await fetchProviderJson(url, {
     body: JSON.stringify({
-      max_tokens: maxTokens,
+      max_completion_tokens: maxTokens,
       messages: [
         {
           content: system,
@@ -38,7 +39,7 @@ async function createChatCompletion({
         },
       ],
       model: model ?? minimaxProvider.defaultModel,
-      reasoning_split: true,
+      reasoning_split: reasoningSplit,
       stream: false,
     }),
     endpointHost: new URL(url).hostname,
@@ -74,8 +75,9 @@ const minimaxProvider = {
     try {
       await createChatCompletion({
         key,
-        maxTokens: 8,
+        maxTokens: 64,
         model: this.defaultModel,
+        reasoningSplit: false,
         system: 'Reply with OK.',
         user: 'Connection test.',
         ...options,

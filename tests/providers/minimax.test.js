@@ -27,7 +27,7 @@ describe('minimax provider', () => {
     provider: minimaxProvider,
     request: {
       body: {
-        max_tokens: 4096,
+        max_completion_tokens: 2048,
         messages: [
           {
             content: 'Rewrite email.',
@@ -45,5 +45,38 @@ describe('minimax provider', () => {
       model: 'MiniMax-M2.5',
       url: 'https://api.minimax.io/v1/chat/completions',
     },
+  });
+
+  it('uses a non-reasoning smoke request for connection tests', async () => {
+    const calls = [];
+
+    await expect(
+      minimaxProvider.testConnection('sk-test-fake-key-do-not-use', {
+        fetchImpl: async (url, options) => {
+          calls.push({ options, url });
+          return {
+            ok: true,
+            status: 200,
+            async json() {
+              return {
+                choices: [
+                  {
+                    message: {
+                      content: 'OK',
+                      role: 'assistant',
+                    },
+                  },
+                ],
+              };
+            },
+          };
+        },
+      })
+    ).resolves.toBe(true);
+
+    expect(JSON.parse(calls[0].options.body)).toMatchObject({
+      max_completion_tokens: 64,
+      reasoning_split: false,
+    });
   });
 });

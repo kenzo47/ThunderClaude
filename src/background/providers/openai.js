@@ -77,7 +77,7 @@ const openaiProvider = {
     try {
       await createResponse({
         key,
-        maxOutputTokens: 8,
+        maxOutputTokens: 16,
         model: this.defaultModel,
         system: 'Reply with OK.',
         user: 'Connection test.',

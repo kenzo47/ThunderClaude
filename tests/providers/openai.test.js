@@ -91,11 +91,20 @@ describe('openai provider', () => {
   });
 
   it('returns true for a successful test connection', async () => {
+    const calls = [];
+
     await expect(
       openaiProvider.testConnection('sk-test-fake-key-do-not-use', {
-        fetchImpl: async () => successfulResponse('OK'),
+        fetchImpl: async (url, options) => {
+          calls.push({ options, url });
+          return successfulResponse('OK');
+        },
       })
     ).resolves.toBe(true);
+
+    expect(JSON.parse(calls[0].options.body)).toMatchObject({
+      max_output_tokens: 16,
+    });
   });
 
   it('returns false for a failed test connection', async () => {
