@@ -5,6 +5,7 @@ import {
   getOptionsSnapshot,
   saveProviderOptions,
   setThemeOptions,
+  testAndSaveProviderOptions,
   testProviderOptions,
 } from '../src/background/options-router.js';
 import { getStorageKeys } from '../src/background/secure-storage.js';
@@ -253,6 +254,68 @@ describe('options router', () => {
     expect(snapshot.settings).toMatchObject({
       defaultProviderId: 'openai',
       onboardingComplete: true,
+    });
+  });
+
+  it('tests and saves a provider in one verified step', async () => {
+    const snapshot = await testAndSaveProviderOptions(
+      {
+        apiKey: 'sk-test-fake-key-do-not-use',
+        customBaseUrl: 'https://api.openai.com/v1',
+        defaultModel: 'gpt-5.5',
+        keyMode: 'encrypted',
+        providerId: 'openai',
+      },
+      {
+        fetchImpl: async () => successfulOpenAiResponse(),
+        storageArea,
+      }
+    );
+
+    const keys = getStorageKeys('openai');
+    expect(JSON.stringify(storageArea.values[keys.encrypted])).not.toContain(
+      'sk-test-fake-key-do-not-use'
+    );
+    expect(snapshot.providerConfigs.openai).toMatchObject({
+      hasKey: true,
+      verified: true,
+    });
+    expect(snapshot.settings).toMatchObject({
+      defaultProviderId: 'openai',
+      onboardingComplete: true,
+    });
+  });
+
+  it('does not save a provider key when automatic testing fails', async () => {
+    await expect(
+      testAndSaveProviderOptions(
+        {
+          apiKey: 'sk-test-fake-key-do-not-use',
+          customBaseUrl: 'https://api.openai.com/v1',
+          defaultModel: 'gpt-5.5',
+          keyMode: 'encrypted',
+          providerId: 'openai',
+        },
+        {
+          fetchImpl: async () =>
+            providerError(
+              401,
+              'invalid api key sk-test-fake-key-do-not-use',
+              'authentication_error'
+            ),
+          storageArea,
+        }
+      )
+    ).rejects.toMatchObject({
+      code: 'authentication_error',
+    });
+
+    const snapshot = await getOptionsSnapshot({ storageArea });
+    const keys = getStorageKeys('openai');
+    expect(storageArea.values[keys.encrypted]).toBeUndefined();
+    expect(snapshot.providerConfigs.openai).toMatchObject({
+      hasKey: false,
+      verified: false,
     });
   });
 

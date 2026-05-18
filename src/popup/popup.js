@@ -264,9 +264,10 @@ async function submitRewrite() {
   status.textContent = 'Rewriting draft...';
 
   const payload = await currentPayload();
-  await sendMessage(payload);
+  const result = await sendMessage(payload);
 
-  status.textContent = 'Draft rewritten.';
+  status.textContent =
+    result.scope === 'selection' ? 'Selected text rewritten.' : 'Draft rewritten.';
 }
 
 const popupCanContinue = await loadOptionsSnapshot();

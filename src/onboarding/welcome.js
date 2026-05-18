@@ -27,7 +27,6 @@ const storageNote = document.querySelector('#storage-note');
 const getStarted = document.querySelector('#get-started');
 const providerNext = document.querySelector('#provider-next');
 const keyBack = document.querySelector('#key-back');
-const saveProviderButton = document.querySelector('#save-provider');
 const testProviderButton = document.querySelector('#test-provider');
 const openOptions = document.querySelector('#open-options');
 const finish = document.querySelector('#finish');
@@ -170,7 +169,7 @@ function providerPayload() {
   };
 }
 
-async function saveProvider() {
+async function testAndSaveProvider() {
   const payload = providerPayload();
 
   await ensureCustomEndpointPermission(
@@ -179,38 +178,14 @@ async function saveProvider() {
     thunderbird.permissions
   );
 
-  await sendMessage({
-    action: 'options:saveProvider',
+  snapshot = await sendMessage({
+    action: 'options:testAndSaveProvider',
     ...payload,
   });
 
   apiKey.value = '';
-  snapshot = await sendMessage({
-    action: 'options:getSnapshot',
-  });
 
   return payload;
-}
-
-async function testAndSaveProvider() {
-  const payload = await saveProvider();
-
-  const testResult = await sendMessage({
-    action: 'options:testProvider',
-    ...payload,
-    apiKey: '',
-  });
-
-  if (!testResult.connected || !testResult.verified) {
-    throw new Error(
-      `Connection test failed${testResult.error?.message ? `: ${testResult.error.message}` : '.'}`
-    );
-  }
-
-  await sendMessage({
-    action: 'options:completeOnboarding',
-    providerId: payload.providerId,
-  });
 }
 
 getStarted.addEventListener('click', () => {
@@ -234,31 +209,15 @@ baseUrl.addEventListener('input', () => {
   renderLocalAccess();
 });
 
-saveProviderButton.addEventListener('click', async () => {
-  setError(null);
-  saveProviderButton.disabled = true;
-  setStatus('Saving provider settings...');
-
-  try {
-    await saveProvider();
-    setStatus('Provider settings saved. Test the connection to finish setup.');
-  } catch (error) {
-    setError(error.message);
-    setStatus('Provider setup needs attention.');
-  } finally {
-    saveProviderButton.disabled = false;
-  }
-});
-
 testProviderButton.addEventListener('click', async () => {
   setError(null);
   testProviderButton.disabled = true;
-  setStatus('Testing provider connection...');
+  setStatus('Testing provider connection before saving...');
 
   try {
     await testAndSaveProvider();
     apiKey.value = '';
-    setStatus('Provider verified. Setup is complete.');
+    setStatus('Provider verified and saved. Setup is complete.');
     showStep('done');
   } catch (error) {
     setError(error.message);

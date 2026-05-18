@@ -227,6 +227,96 @@ describe('rewrite orchestrator', () => {
     expect(thunderbird.setCalls[0].details.body).toBe('<p>Bonjour</p>');
   });
 
+  it('rewrites only selected text when a selection is supplied', async () => {
+    const providerCalls = [];
+    const thunderbird = createThunderbird('<p>Hello Bob. Bye Bob.</p>');
+    const provider = createProvider('<strong>Dear Bob</strong>', providerCalls);
+
+    await expect(
+      rewriteComposeDraft(
+        {
+          action: 'rewrite',
+          preset: 'make-formal',
+          providerId: 'test-provider',
+          selectionText: 'Hello Bob',
+          tabId: 7,
+        },
+        {
+          DOMParserImpl: null,
+          getSettingsImpl: async () => getTestSettings(),
+          getProviderImpl: () => provider,
+          resolveProviderCredential: async () => 'stored-provider-key',
+          thunderbird,
+        }
+      )
+    ).resolves.toMatchObject({
+      body: '<p><strong>Dear Bob</strong>. Bye Bob.</p>',
+      scope: 'selection',
+    });
+
+    expect(providerCalls).toHaveLength(1);
+    expect(providerCalls[0].system).toContain('selected text');
+    expect(providerCalls[0].user).toContain('Selected text:');
+    expect(providerCalls[0].user).toContain('Hello Bob');
+    expect(thunderbird.setCalls[0].details).toMatchObject({
+      body: '<p><strong>Dear Bob</strong>. Bye Bob.</p>',
+      isPlainText: false,
+    });
+  });
+
+  it('preserves inline media outside a selected text rewrite', async () => {
+    const thunderbird = createThunderbird('<p>Hello<img src="cid:first"> Bob</p>');
+    const provider = createProvider('<em>Robert</em>');
+
+    await rewriteComposeDraft(
+      {
+        action: 'rewrite',
+        preset: 'make-formal',
+        providerId: 'test-provider',
+        selectionText: 'Bob',
+        tabId: 7,
+      },
+      {
+        DOMParserImpl: null,
+        getSettingsImpl: async () => getTestSettings(),
+        getProviderImpl: () => provider,
+        resolveProviderCredential: async () => 'stored-provider-key',
+        thunderbird,
+      }
+    );
+
+    expect(thunderbird.setCalls[0].details.body).toBe(
+      '<p>Hello<img src="cid:first"> <em>Robert</em></p>'
+    );
+  });
+
+  it('does not rewrite when selected text is not unique', async () => {
+    const thunderbird = createThunderbird('<p>Bob, meet Bob.</p>');
+    const provider = createProvider('<strong>Robert</strong>');
+
+    await expect(
+      rewriteComposeDraft(
+        {
+          action: 'rewrite',
+          preset: 'make-formal',
+          providerId: 'test-provider',
+          selectionText: 'Bob',
+          tabId: 7,
+        },
+        {
+          DOMParserImpl: null,
+          getSettingsImpl: async () => getTestSettings(),
+          getProviderImpl: () => provider,
+          resolveProviderCredential: async () => 'stored-provider-key',
+          thunderbird,
+        }
+      )
+    ).rejects.toMatchObject({
+      code: 'selection_not_unique',
+    });
+    expect(thunderbird.setCalls).toEqual([]);
+  });
+
   it('preserves detected signatures outside the LLM rewrite', async () => {
     const providerCalls = [];
     const thunderbird = createThunderbird(

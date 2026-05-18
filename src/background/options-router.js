@@ -379,6 +379,37 @@ export async function testProviderOptions(
   };
 }
 
+export async function testAndSaveProviderOptions(message = {}, options = {}) {
+  const testResult = await testProviderOptions(message, options);
+
+  if (!testResult.connected) {
+    throw new OptionsError(
+      `Connection test failed${testResult.error?.message ? `: ${testResult.error.message}` : '.'}`,
+      {
+        code: testResult.error?.code ?? 'provider_connection_failed',
+      }
+    );
+  }
+
+  await saveProviderOptions(message, options);
+
+  const providerId = message.providerId;
+  await updateSettings(
+    (settings) => ({
+      ...settings,
+      defaultProviderId: providerId,
+      onboardingComplete: true,
+      verifiedProviderIds: {
+        ...settings.verifiedProviderIds,
+        [providerId]: true,
+      },
+    }),
+    options
+  );
+
+  return getOptionsSnapshot(options);
+}
+
 export async function completeOnboarding({ providerId } = {}, options = {}) {
   getProvider(providerId);
   const storageArea = getStorageArea(options.storageArea);
@@ -439,6 +470,10 @@ export async function handleOptionsMessage(message, options = {}) {
 
   if (message?.action === 'options:testProvider') {
     return testProviderOptions(message, options);
+  }
+
+  if (message?.action === 'options:testAndSaveProvider') {
+    return testAndSaveProviderOptions(message, options);
   }
 
   if (message?.action === 'options:completeOnboarding') {

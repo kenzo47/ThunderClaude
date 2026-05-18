@@ -13,6 +13,7 @@ import { getEncryptedValue } from './secure-storage.js';
 import { getSettings } from './settings.js';
 import { restore, tokenize } from './inline-media.js';
 import { handleOptionsMessage } from './options-router.js';
+import { replaceSelectedTextWithHtml } from './selection.js';
 import { splitSignature } from './signature.js';
 import { hasRewriteableText, splitAroundInlineMediaTokens } from '../lib/html-segments.js';
 import { allowlistHtml } from '../lib/sanitize.js';
@@ -152,6 +153,26 @@ function buildFixedSegmentPrompt({ instruction, segmentHtml }) {
   };
 }
 
+function buildSelectionPrompt({ contextHtml, instruction, selectedText }) {
+  return {
+    system: [
+      'You rewrite selected text from a Thunderbird compose-window email draft.',
+      'Return only the replacement HTML fragment for the selected text.',
+      'Do not rewrite or repeat unselected draft text.',
+      'Do not include [[TC_IMG_N]] tokens or image tags.',
+      TONE_RULE,
+      LIST_FORMAT_RULE,
+    ].join(' '),
+    user: [
+      `Instruction: ${instruction}`,
+      'Selected text:',
+      selectedText,
+      'Draft context HTML:',
+      contextHtml,
+    ].join('\n\n'),
+  };
+}
+
 function stripInlineMediaTokens(html) {
   return html.replace(INLINE_MEDIA_TOKEN_PATTERN, '');
 }
@@ -227,6 +248,69 @@ async function rewriteWithFixedMedia({
   }
 
   return rewrittenSegments.join('');
+}
+
+function getSelectedRewriteText(message) {
+  if (message?.preset === 'reply-draft') {
+    return '';
+  }
+
+  return message?.selectionText?.trim() ?? '';
+}
+
+function assertInlineMediaPreserved(originalMedia, rewrittenMedia) {
+  const originalImages = originalMedia.map((entry) => entry.outerHTML);
+  const rewrittenImages = rewrittenMedia.map((entry) => entry.outerHTML);
+
+  if (
+    originalImages.length !== rewrittenImages.length ||
+    originalImages.some((imageHtml, index) => imageHtml !== rewrittenImages[index])
+  ) {
+    throw new RewriteError('AI dropped an image, retry?', {
+      code: 'inline_media_token_mismatch',
+    });
+  }
+}
+
+async function rewriteSelectedComposeText({
+  baseUrl,
+  composeBody,
+  instruction,
+  key,
+  model,
+  provider,
+  sanitizeImpl,
+  selectedText,
+  signal,
+  tokenizeImpl,
+  DOMParserImpl,
+}) {
+  const tokenizedBody = tokenizeImpl(composeBody);
+  replaceSelectedTextWithHtml(composeBody, selectedText, '', {
+    DOMParserImpl,
+  });
+  const prompt = buildSelectionPrompt({
+    contextHtml: tokenizedBody.text,
+    instruction,
+    selectedText,
+  });
+  const rawOutput = await callProviderRewrite({
+    baseUrl,
+    key,
+    model,
+    prompt,
+    provider,
+    signal,
+  });
+  const replacementHtml = sanitizeImpl(rawOutput);
+  const body = replaceSelectedTextWithHtml(composeBody, selectedText, replacementHtml, {
+    DOMParserImpl,
+  });
+  const rewrittenBody = tokenizeImpl(body);
+
+  assertInlineMediaPreserved(tokenizedBody.media, rewrittenBody.media);
+
+  return body;
 }
 
 function validateRestoredOutput({
@@ -323,21 +407,52 @@ export async function rewriteComposeDraft(message, options = {}) {
   const instruction = normalizeInstruction(message);
   const details = await thunderbird.compose.getComposeDetails(tabId);
   const composeBody = normalizeComposeBody(details);
+  const selectedText = getSelectedRewriteText(message);
   const signatureSplit = (options.splitSignatureImpl ?? splitSignature)(composeBody);
-  const tokenized = (options.tokenizeImpl ?? tokenize)(signatureSplit.bodyHtml);
+  const tokenizeImpl = options.tokenizeImpl ?? tokenize;
+  const sanitizeImpl = options.sanitizeImpl ?? allowlistHtml;
+  const restoreImpl = options.restoreImpl ?? restore;
   const tokenizedSignature = signatureSplit.signatureHtml
-    ? (options.tokenizeImpl ?? tokenize)(signatureSplit.signatureHtml)
+    ? tokenizeImpl(signatureSplit.signatureHtml)
     : { media: [], mediaMap: new Map(), text: '' };
   const allowImageRelocation = message?.allowImageRelocation === true;
   const resolveProviderCredential =
     options.resolveProviderCredential ?? defaultResolveProviderCredential;
   const key = await resolveProviderCredential(providerId, options);
   const model = resolveModel(provider, message, settings);
+
+  if (selectedText) {
+    const body = await rewriteSelectedComposeText({
+      baseUrl,
+      composeBody,
+      DOMParserImpl: options.DOMParserImpl,
+      instruction,
+      key,
+      model,
+      provider,
+      sanitizeImpl,
+      selectedText,
+      signal: options.signal,
+      tokenizeImpl,
+    });
+
+    await thunderbird.compose.setComposeDetails(tabId, {
+      body,
+      isPlainText: false,
+    });
+
+    return {
+      body,
+      model,
+      providerId,
+      scope: 'selection',
+    };
+  }
+
+  const tokenized = tokenizeImpl(signatureSplit.bodyHtml);
   const allowedCidImageHtml = [...tokenized.media, ...tokenizedSignature.media].map(
     (entry) => entry.outerHTML
   );
-  const sanitizeImpl = options.sanitizeImpl ?? allowlistHtml;
-  const restoreImpl = options.restoreImpl ?? restore;
   let rawOutput;
   let restoredOutput;
 

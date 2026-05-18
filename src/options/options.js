@@ -184,7 +184,7 @@ baseUrl.addEventListener('input', () => {
 providerForm.addEventListener('submit', async (event) => {
   event.preventDefault();
   setError(null);
-  setStatus('Saving provider settings...', 'neutral');
+  setStatus('Testing provider connection before saving...', 'neutral');
 
   try {
     const payload = providerPayload();
@@ -194,15 +194,15 @@ providerForm.addEventListener('submit', async (event) => {
       thunderbird.permissions
     );
     snapshot = await sendMessage({
-      action: 'options:saveProvider',
+      action: 'options:testAndSaveProvider',
       ...payload,
     });
     apiKey.value = '';
     render();
-    setStatus('Saved. Rewrite is enabled; test connection is optional but recommended.', 'success');
+    setStatus('Connection test passed. Provider settings were saved.', 'success');
   } catch (error) {
     setError(error.message);
-    setStatus(`Save failed: ${error.message}`, 'error');
+    setStatus(`Save blocked: ${error.message}`, 'error');
   }
 });
 
