@@ -30,33 +30,33 @@ public release signing is still pending.
 Install dependencies:
 
 ```bash
-npm install
+pnpm install
 ```
 
 Load the extension in a temporary Thunderbird profile:
 
 ```bash
-npm run dev
+pnpm dev
 ```
 
 By default this launches `thunderbird`. Set `THUNDERBIRD_BINARY` when the binary
 has a different name or path:
 
 ```bash
-THUNDERBIRD_BINARY=/path/to/thunderbird npm run dev
+THUNDERBIRD_BINARY=/path/to/thunderbird pnpm dev
 ```
 
 Run the required gates before committing:
 
 ```bash
-npm test
-npm run lint
+pnpm test
+pnpm lint
 ```
 
 Prepare the unpacked extension files:
 
 ```bash
-npm run build
+pnpm build
 ```
 
 This writes `dist/unpacked/` for inspection and `dist/thunderclaude-0.0.0.xpi`
@@ -66,7 +66,7 @@ for local installation testing.
 
 ### Development Install
 
-Use `npm run dev` for active development. It starts `web-ext` with Thunderbird
+Use `pnpm dev` for active development. It starts `web-ext` with Thunderbird
 and loads the repository as a temporary extension.
 
 On first run:
@@ -82,7 +82,7 @@ On first run:
 Build the XPI:
 
 ```bash
-npm run build
+pnpm build
 ```
 
 Then install it:
