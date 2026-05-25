@@ -172,6 +172,63 @@ describe('rewrite orchestrator', () => {
     );
   });
 
+  it('keeps a full-mail image whose data URL type is outside the sanitizer allowlist', async () => {
+    // Regression: data:image/jpg (and svg, avif, etc.) are not in the sanitizer
+    // image allowlist, so re-sanitizing the restored body used to delete them.
+    // The user's image markup must now be restored verbatim and left in place.
+    const providerCalls = [];
+    const thunderbird = createThunderbird(
+      '<p>Hello <img src="data:image/jpg;base64,QQ=="> world</p>'
+    );
+    const provider = createProvider((input, index) => {
+      expect(input.user).not.toContain('data:image');
+      return index === 0 ? '<p>Formal hello ' : ' world</p>';
+    }, providerCalls);
+
+    await rewriteComposeDraft(
+      {
+        action: 'rewrite',
+        allowImageRelocation: false,
+        preset: 'make-formal',
+        providerId: 'test-provider',
+        tabId: 42,
+      },
+      {
+        getSettingsImpl: async () => getTestSettings(),
+        getProviderImpl: () => provider,
+        resolveProviderCredential: async () => 'stored-provider-key',
+        thunderbird,
+      }
+    );
+
+    expect(thunderbird.setCalls[0].details.body).toBe(
+      '<p>Formal hello <img src="data:image/jpg;base64,QQ=="> world</p>'
+    );
+  });
+
+  it('strips images the model invents during a full rewrite', async () => {
+    const thunderbird = createThunderbird('<p>Hello world</p>');
+    const provider = createProvider('<p>Hi <img src="https://evil.test/x.png"> there</p>');
+
+    await rewriteComposeDraft(
+      {
+        action: 'rewrite',
+        preset: 'make-formal',
+        providerId: 'test-provider',
+        tabId: 7,
+      },
+      {
+        getSettingsImpl: async () => getTestSettings(),
+        getProviderImpl: () => provider,
+        resolveProviderCredential: async () => 'stored-provider-key',
+        thunderbird,
+      }
+    );
+
+    expect(thunderbird.setCalls[0].details.body).not.toContain('evil.test');
+    expect(thunderbird.setCalls[0].details.body).toContain('Hi');
+  });
+
   it('preserves remote inline media outside a selected text rewrite', async () => {
     const thunderbird = createThunderbird('<p>Hello<img src="https://example.test/a.png"> Bob</p>');
     const provider = createProvider('<em>Robert</em>');

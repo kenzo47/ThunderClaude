@@ -323,16 +323,17 @@ async function rewriteSelectedComposeText({
 }
 
 function validateRestoredOutput({
-  allowedCidImageHtml,
   rawOutput,
   requireOriginalOrder,
   restoreImpl,
   sanitizeImpl,
   tokenized,
 }) {
-  const sanitizedOutput = sanitizeImpl(rawOutput, {
-    allowedCidImageHtml,
-  });
+  // Sanitize while every image is still an inert [[TC_IMG_N]] text token, so any
+  // <img> the model invented is stripped and the tokens survive untouched. The
+  // user's own image markup is then restored verbatim as the final step (below),
+  // so it is never subjected to the allowlist and can never be dropped.
+  const sanitizedOutput = sanitizeImpl(rawOutput);
 
   return restoreImpl(sanitizedOutput, tokenized.mediaMap, {
     requireOriginalOrder,
@@ -472,11 +473,8 @@ export async function rewriteComposeDraft(message, options = {}) {
     );
   }
   // Body images of any scheme (cid, http(s), data:image) are tokenized so the
-  // model cannot drop or restyle them; the allowlist below is keyed on their
-  // exact original markup, so only the user's own images survive sanitizing.
-  const allowedCidImageHtml = [...tokenized.media, ...tokenizedSignature.media].map(
-    (entry) => entry.outerHTML
-  );
+  // model never sees or restyles them. Their original markup is restored
+  // verbatim after sanitizing, so the user's images are always left in place.
   let rawOutput;
   let restoredOutput;
 
@@ -493,7 +491,6 @@ export async function rewriteComposeDraft(message, options = {}) {
 
     try {
       restoredOutput = validateRestoredOutput({
-        allowedCidImageHtml,
         rawOutput,
         requireOriginalOrder: false,
         restoreImpl,
@@ -520,7 +517,6 @@ export async function rewriteComposeDraft(message, options = {}) {
         tokenizedHtml: tokenized.text,
       });
       restoredOutput = validateRestoredOutput({
-        allowedCidImageHtml,
         rawOutput,
         requireOriginalOrder: true,
         restoreImpl,
@@ -540,7 +536,6 @@ export async function rewriteComposeDraft(message, options = {}) {
       tokenizedHtml: tokenized.text,
     });
     restoredOutput = validateRestoredOutput({
-      allowedCidImageHtml,
       rawOutput,
       requireOriginalOrder: true,
       restoreImpl,
@@ -553,13 +548,14 @@ export async function rewriteComposeDraft(message, options = {}) {
     : '';
   const sanitizedSignature = restoredSignature
     ? (options.sanitizeImpl ?? allowlistHtml)(restoredSignature, {
-        allowedCidImageHtml,
         signatureMode: true,
       })
     : '';
-  const body = (options.sanitizeImpl ?? allowlistHtml)(restoredOutput, {
-    allowedCidImageHtml,
-  });
+  // restoredOutput was already sanitized while its images were inert text
+  // tokens, then the user's original image markup was restored verbatim.
+  // Re-sanitizing here would re-apply the image allowlist and drop those
+  // images, so it is intentionally used as-is.
+  const body = restoredOutput;
   // quotedSplit.quotedHtml comes straight from the user's own draft and is
   // re-appended verbatim, never sanitized or sent to the model, so the quoted
   // thread keeps its original styling exactly.
