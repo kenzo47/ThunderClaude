@@ -1,13 +1,13 @@
 <p align="center">
-  <img src="docs/branding/banner.webp" alt="ThunderClaude — AI-powered email rewriting for Thunderbird" width="100%" />
+  <img src="docs/branding/banner.webp" alt="ThunderClaude: AI-powered email rewriting for Thunderbird" width="100%" />
 </p>
 
 # ThunderClaude
 
 ThunderClaude is a Thunderbird MailExtension for rewriting the current
 compose-window email with LLM presets or a custom instruction. It rewrites only
-the text you select — or, after a confirmation step, the whole draft — and
-leaves every inline image untouched by default.
+the text you select, or the whole draft after a confirmation step, and leaves
+every inline image untouched by default.
 
 ## Current Status
 
@@ -18,19 +18,19 @@ progress; until it is approved, install the packaged XPI as described below.
 
 ## Features
 
-- **Presets and custom instructions** — make formal or casual, shorten, expand,
+- **Presets and custom instructions**: make formal or casual, shorten, expand,
   fix grammar, translate, or draft a reply, plus your own free-text instruction.
-- **Selection-aware scope** — by default ThunderClaude rewrites only the text you
+- **Selection-aware scope**: by default ThunderClaude rewrites only the text you
   have selected, so quoted replies and forwarded threads keep their original
   styling. With nothing selected it asks for confirmation before rewriting the
   whole draft.
-- **Inline images preserved by default** — every inline image (`cid:` attachment,
+- **Inline images preserved by default**: every inline image (`cid:` attachment,
   remote, or `data:` image) stays exactly in place. An optional toggle lets the
-  model move images when you want it to; it can never silently drop one.
-- **Bring your own provider** — Anthropic, OpenAI, Gemini, MiniMax, DeepSeek,
+  model move images when you want it to, and it can never silently drop one.
+- **Bring your own provider**: Anthropic, OpenAI, Gemini, MiniMax, DeepSeek,
   OpenRouter, any OpenAI-compatible endpoint, or local models via Ollama or LM
   Studio.
-- **Local-first key storage** — your API key is stored encrypted at rest and is
+- **Local-first key storage**: your API key is stored encrypted at rest and is
   sent only to the provider you configured. No telemetry.
 
 ## Screenshots
@@ -39,8 +39,8 @@ progress; until it is approved, install the packaged XPI as described below.
   <img src="docs/screenshots/thunderclaude-1.webp" alt="ThunderClaude compose-window popup showing rewrite presets, the inline-image toggle, a custom-instruction box, and provider and model pickers" width="380" />
 </p>
 
-The compose-window popup. Choose a preset — Formal, Casual, Shorten, Expand,
-Grammar, Translate, or Reply draft — or type a custom instruction that overrides
+The compose-window popup. Choose a preset (Formal, Casual, Shorten, Expand,
+Grammar, Translate, or Reply draft) or type a custom instruction that overrides
 it. Inline images stay exactly where they are unless you tick "Let the AI move
 inline images", and your provider and model are one click away. The header shows
 whether the draft is HTML or plain text and lets you flip between light and dark.
@@ -133,9 +133,6 @@ Thunderbird's official add-on install guide documents the Add-ons Manager file
 install flow:
 https://support.mozilla.org/kb/installing-addon-thunderbird
 
-Release signing notes live in `docs/RELEASE.md`.
-Manual Thunderbird verification steps live in `docs/MANUAL-VERIFY.md`.
-
 ## Privacy
 
 ThunderClaude has no servers and collects no analytics or telemetry. Your draft
@@ -145,10 +142,8 @@ trigger a rewrite; your API key is stored locally and encrypted at rest. See
 
 ## Contributing
 
-Contributions are welcome. Read [`AGENTS.md`](AGENTS.md) before changing files —
-it is the source of truth for repo conventions, commit policy, and security
-rules — and run `pnpm test` and `pnpm lint` before every commit. The
-implementation plan lives in [`docs/PLAN.md`](docs/PLAN.md).
+Contributions are welcome. Please open an issue or pull request, keep changes
+focused, and run `pnpm test` and `pnpm lint` before every commit.
 
 ## License
 
@@ -160,7 +155,7 @@ Software Foundation. See [`LICENSE`](LICENSE) for the full text.
 
 This means you are free to use, study, fork, and modify ThunderClaude. If you
 distribute a modified version, you must release your changes under the same
-GPL-3.0 license with source — so nobody can take this code, close it up, and
+GPL-3.0 license with source, so nobody can take this code, close it up, and
 resell it as a proprietary product.
 
 ThunderClaude is distributed in the hope that it will be useful, but WITHOUT ANY
