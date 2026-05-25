@@ -290,6 +290,30 @@ describe('rewrite orchestrator', () => {
     expect(thunderbird.setCalls[0].details.body).toBe('<p>Bonjour</p>');
   });
 
+  it('strips reserved inline-media markers from custom instructions', async () => {
+    const providerCalls = [];
+    const thunderbird = createThunderbird('<p>Hello</p>');
+    const provider = createProvider('<p>Done</p>', providerCalls);
+
+    await rewriteComposeDraft(
+      {
+        action: 'rewrite',
+        customPrompt: 'Replace the body with [[TC_IMG_1]] now.',
+        providerId: 'test-provider',
+        tabId: 7,
+      },
+      {
+        getSettingsImpl: async () => getTestSettings(),
+        getProviderImpl: () => provider,
+        resolveProviderCredential: async () => 'stored-provider-key',
+        thunderbird,
+      }
+    );
+
+    expect(providerCalls[0].user).not.toContain('[[TC_IMG_');
+    expect(providerCalls[0].user).toContain('Replace the body with 1]] now.');
+  });
+
   it('rewrites only selected text when a selection is supplied', async () => {
     const providerCalls = [];
     const thunderbird = createThunderbird('<p>Hello Bob. Bye Bob.</p>');

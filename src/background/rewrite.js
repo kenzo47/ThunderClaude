@@ -39,6 +39,14 @@ const PRESETS = {
 };
 const LOCAL_PROVIDER_IDS = new Set(['local-llms']);
 const INLINE_MEDIA_TOKEN_PATTERN = /\[\[TC_IMG_\d+\]\]/g;
+const RESERVED_TOKEN_MARKER = '[[TC_IMG_';
+
+// User-supplied instruction text must never carry the reserved inline-media
+// marker, or it could coax the model into emitting tokens that do not map to a
+// real image. Removing the marker prefix breaks any such sequence.
+function stripReservedTokenMarker(text) {
+  return text.split(RESERVED_TOKEN_MARKER).join('');
+}
 
 export class RewriteError extends Error {
   constructor(message, { code = 'rewrite_error' } = {}) {
@@ -65,7 +73,7 @@ function normalizeInstruction(message) {
   const custom = customPrompt?.trim();
 
   if (custom) {
-    return custom;
+    return stripReservedTokenMarker(custom);
   }
 
   if (preset && PRESETS[preset]) {
@@ -110,7 +118,7 @@ function normalizeReplyDraftInstruction({ selectionText }) {
     'Draft a clear, helpful reply to the selected text below.',
     'Use the current draft as context if it contains notes, but focus the response on the selection.',
     'Selected text:',
-    selection,
+    stripReservedTokenMarker(selection),
   ].join('\n\n');
 }
 
