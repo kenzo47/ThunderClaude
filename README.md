@@ -116,6 +116,13 @@ Planned captures:
 - `docs/screenshots/popup.png`: compose-action rewrite controls.
 - `docs/screenshots/options.png`: provider and key settings.
 
+## Privacy
+
+ThunderClaude has no servers and collects no analytics or telemetry. Your draft
+and instruction are sent only to the LLM provider you configure, only when you
+trigger a rewrite; your API key is stored locally and encrypted at rest. See
+[`PRIVACY.md`](PRIVACY.md) for the full policy.
+
 ## License
 
 Copyright (C) 2026 Kenzo Wijnants
