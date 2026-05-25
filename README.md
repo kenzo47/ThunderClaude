@@ -5,16 +5,34 @@
 # ThunderClaude
 
 ThunderClaude is a Thunderbird MailExtension for rewriting the current
-compose-window email with LLM presets or a custom instruction while preserving
-inline `cid:` media.
+compose-window email with LLM presets or a custom instruction. It rewrites only
+the text you select — or, after a confirmation step, the whole draft — and
+leaves every inline image untouched by default.
 
 The implementation plan lives in `docs/PLAN.md`. Contributors and coding agents
 must read `AGENTS.md` before changing files.
 
 ## Current Status
 
-This repository is under active pre-release work. Development loading works, but
-public release signing is still pending.
+The first release, `v0.1.0`, is tagged. Development loading and local packaging
+work; the add-on is not yet listed on addons.thunderbird.net.
+
+## Features
+
+- **Presets and custom instructions** — make formal or casual, shorten, expand,
+  fix grammar, translate, or draft a reply, plus your own free-text instruction.
+- **Selection-aware scope** — by default ThunderClaude rewrites only the text you
+  have selected, so quoted replies and forwarded threads keep their original
+  styling. With nothing selected it asks for confirmation before rewriting the
+  whole draft.
+- **Inline images preserved by default** — every inline image (`cid:` attachment,
+  remote, or `data:` image) stays exactly in place. An optional toggle lets the
+  model move images when you want it to; it can never silently drop one.
+- **Bring your own provider** — Anthropic, OpenAI, Gemini, MiniMax, DeepSeek,
+  OpenRouter, any OpenAI-compatible endpoint, or local models via Ollama or LM
+  Studio.
+- **Local-first key storage** — your API key is stored encrypted at rest and is
+  sent only to the provider you configured. No telemetry.
 
 ## Requirements
 
@@ -59,7 +77,7 @@ Prepare the unpacked extension files:
 pnpm build
 ```
 
-This writes `dist/unpacked/` for inspection and `dist/thunderclaude-0.0.0.xpi`
+This writes `dist/unpacked/` for inspection and `dist/thunderclaude-0.1.0.xpi`
 for local installation testing.
 
 ## Install
@@ -89,7 +107,7 @@ Then install it:
 
 1. Open Thunderbird Add-ons Manager.
 2. Use the gear menu to choose "Install Add-on From File".
-3. Select `dist/thunderclaude-0.0.0.xpi`.
+3. Select `dist/thunderclaude-0.1.0.xpi`.
 
 Thunderbird's official add-on install guide documents the Add-ons Manager file
 install flow:
@@ -105,16 +123,6 @@ Manual Thunderbird verification steps live in `docs/MANUAL-VERIFY.md`.
   master.
 - `docs/branding/banner.webp` and `banner.png` — 2172×724 listing banner
   used at the top of this README and on the ATN listing.
-
-## Screenshots
-
-Screenshots will be added before tagging `v0.1.0`.
-
-Planned captures:
-
-- `docs/screenshots/onboarding.png`: provider setup and at-rest encryption note.
-- `docs/screenshots/popup.png`: compose-action rewrite controls.
-- `docs/screenshots/options.png`: provider and key settings.
 
 ## Privacy
 
