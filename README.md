@@ -9,13 +9,12 @@ compose-window email with LLM presets or a custom instruction. It rewrites only
 the text you select — or, after a confirmation step, the whole draft — and
 leaves every inline image untouched by default.
 
-The implementation plan lives in `docs/PLAN.md`. Contributors and coding agents
-must read `AGENTS.md` before changing files.
-
 ## Current Status
 
-The latest release is `v0.1.2`. Development loading and local packaging
-work; the add-on is not yet listed on addons.thunderbird.net.
+The latest release is `v0.1.2`, available from the
+[GitHub Releases](https://github.com/kenzo47/ThunderClaude/releases) page.
+Listing on [addons.thunderbird.net](https://addons.thunderbird.net) is in
+progress; until it is approved, install the packaged XPI as described below.
 
 ## Features
 
@@ -34,14 +33,35 @@ work; the add-on is not yet listed on addons.thunderbird.net.
 - **Local-first key storage** — your API key is stored encrypted at rest and is
   sent only to the provider you configured. No telemetry.
 
+## Screenshots
+
+<p align="center">
+  <img src="docs/screenshots/thunderclaude-1.webp" alt="ThunderClaude compose-window popup showing rewrite presets, the inline-image toggle, a custom-instruction box, and provider and model pickers" width="380" />
+</p>
+
+The compose-window popup. Choose a preset — Formal, Casual, Shorten, Expand,
+Grammar, Translate, or Reply draft — or type a custom instruction that overrides
+it. Inline images stay exactly where they are unless you tick "Let the AI move
+inline images", and your provider and model are one click away. The header shows
+whether the draft is HTML or plain text and lets you flip between light and dark.
+
+<p align="center">
+  <img src="docs/screenshots/thunderclaude-2.webp" alt="ThunderClaude options page listing supported providers with default model, base URL, and an encrypted API key field" width="100%" />
+</p>
+
+The options page. Pick any supported provider from the sidebar, set its default
+model and base URL, and save an API key that is encrypted at rest (AES-GCM) with
+a key kept inside your Thunderbird profile. "Test connection" checks the key
+before you depend on it, and a blank key field leaves an existing key in place.
+
 ## Requirements
 
 - Thunderbird 128 or newer.
-- Node.js 22 or newer.
-- At least one configured provider:
-  - Anthropic, OpenAI, Gemini, MiniMax, DeepSeek, OpenRouter, or an
-    OpenAI-compatible endpoint with an API key.
-  - Local LLMs through Ollama or LM Studio without a provider key.
+- At least one LLM provider:
+  - an API key for Anthropic, OpenAI, Gemini, MiniMax, DeepSeek, OpenRouter, or
+    any OpenAI-compatible endpoint, or
+  - a local model served by Ollama or LM Studio (no key required).
+- Node.js 22 or newer, only if you build from source.
 
 ## Development
 
@@ -116,20 +136,19 @@ https://support.mozilla.org/kb/installing-addon-thunderbird
 Release signing notes live in `docs/RELEASE.md`.
 Manual Thunderbird verification steps live in `docs/MANUAL-VERIFY.md`.
 
-## Branding
-
-- `docs/branding/logo.webp` and `logo.png` — 1254×1254 master icon. The
-  shipped `icons/icon-{16,32,48,96}.png` files are downscaled from this
-  master.
-- `docs/branding/banner.webp` and `banner.png` — 2172×724 listing banner
-  used at the top of this README and on the ATN listing.
-
 ## Privacy
 
 ThunderClaude has no servers and collects no analytics or telemetry. Your draft
 and instruction are sent only to the LLM provider you configure, only when you
 trigger a rewrite; your API key is stored locally and encrypted at rest. See
 [`PRIVACY.md`](PRIVACY.md) for the full policy.
+
+## Contributing
+
+Contributions are welcome. Read [`AGENTS.md`](AGENTS.md) before changing files —
+it is the source of truth for repo conventions, commit policy, and security
+rules — and run `pnpm test` and `pnpm lint` before every commit. The
+implementation plan lives in [`docs/PLAN.md`](docs/PLAN.md).
 
 ## License
 
