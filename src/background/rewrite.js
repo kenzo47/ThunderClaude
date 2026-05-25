@@ -14,6 +14,7 @@ import { getSettings } from './settings.js';
 import { restore, tokenize } from './inline-media.js';
 import { handleOptionsMessage } from './options-router.js';
 import { replaceSelectedTextWithHtml } from './selection.js';
+import { splitQuotedReply } from './quoted-reply.js';
 import { splitSignature } from './signature.js';
 import { hasRewriteableText, splitAroundInlineMediaTokens } from '../lib/html-segments.js';
 import { allowlistHtml } from '../lib/sanitize.js';
@@ -416,7 +417,10 @@ export async function rewriteComposeDraft(message, options = {}) {
   const details = await thunderbird.compose.getComposeDetails(tabId);
   const composeBody = normalizeComposeBody(details);
   const selectedText = getSelectedRewriteText(message);
-  const signatureSplit = (options.splitSignatureImpl ?? splitSignature)(composeBody);
+  // A full-mail rewrite must leave any quoted reply or forwarded thread below
+  // the new message untouched, so peel it off first and re-append it verbatim.
+  const quotedSplit = (options.splitQuotedReplyImpl ?? splitQuotedReply)(composeBody);
+  const signatureSplit = (options.splitSignatureImpl ?? splitSignature)(quotedSplit.bodyHtml);
   const tokenizeImpl = options.tokenizeImpl ?? tokenize;
   const sanitizeImpl = options.sanitizeImpl ?? allowlistHtml;
   const restoreImpl = options.restoreImpl ?? restore;
@@ -458,6 +462,15 @@ export async function rewriteComposeDraft(message, options = {}) {
   }
 
   const tokenized = tokenizeImpl(signatureSplit.bodyHtml, { includeAllImages: true });
+  if (!hasRewriteableText(tokenized.text) && tokenized.media.length === 0) {
+    // Everything was quoted history or a signature; there is no new message to
+    // rewrite. Ask the user to write or select something rather than send the
+    // model an empty draft.
+    throw new RewriteError(
+      'Write a message above the quoted reply, or select the text you want rewritten.',
+      { code: 'empty_rewrite_body' }
+    );
+  }
   // Body images of any scheme (cid, http(s), data:image) are tokenized so the
   // model cannot drop or restyle them; the allowlist below is keyed on their
   // exact original markup, so only the user's own images survive sanitizing.
@@ -547,7 +560,10 @@ export async function rewriteComposeDraft(message, options = {}) {
   const body = (options.sanitizeImpl ?? allowlistHtml)(restoredOutput, {
     allowedCidImageHtml,
   });
-  const bodyWithSignature = `${body}${sanitizedSignature}`;
+  // quotedSplit.quotedHtml comes straight from the user's own draft and is
+  // re-appended verbatim, never sanitized or sent to the model, so the quoted
+  // thread keeps its original styling exactly.
+  const bodyWithSignature = `${body}${sanitizedSignature}${quotedSplit.quotedHtml}`;
 
   await thunderbird.compose.setComposeDetails(tabId, {
     body: bodyWithSignature,

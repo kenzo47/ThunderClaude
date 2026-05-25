@@ -466,6 +466,90 @@ describe('rewrite orchestrator', () => {
     );
   });
 
+  it('keeps the quoted reply thread out of a full-mail rewrite', async () => {
+    const providerCalls = [];
+    const quoted =
+      '<div class="moz-cite-prefix">On 5/25/26 10:00, Sam wrote:</div>' +
+      '<blockquote type="cite" cite="mid:abc"><p style="color: green">Original idea</p></blockquote>';
+    const thunderbird = createThunderbird(`<p>Hi Sam</p>${quoted}`);
+    const provider = createProvider('<p>Hello Sam</p>', providerCalls);
+
+    await rewriteComposeDraft(
+      {
+        action: 'rewrite',
+        preset: 'make-formal',
+        providerId: 'test-provider',
+        tabId: 7,
+      },
+      {
+        getSettingsImpl: async () => getTestSettings(),
+        getProviderImpl: () => provider,
+        resolveProviderCredential: async () => 'stored-provider-key',
+        thunderbird,
+      }
+    );
+
+    expect(providerCalls[0].user).toContain('<p>Hi Sam</p>');
+    expect(providerCalls[0].user).not.toContain('Original idea');
+    expect(providerCalls[0].user).not.toContain('moz-cite-prefix');
+    expect(thunderbird.setCalls[0].details.body).toBe(`<p>Hello Sam</p>${quoted}`);
+  });
+
+  it('keeps a forwarded thread out of a full-mail rewrite', async () => {
+    const providerCalls = [];
+    const forwarded =
+      '<div class="moz-forward-container"><br>-------- Forwarded Message --------' +
+      '<p style="color: red">Forwarded body</p></div>';
+    const thunderbird = createThunderbird(`<p>See below</p>${forwarded}`);
+    const provider = createProvider('<p>Please see below</p>', providerCalls);
+
+    await rewriteComposeDraft(
+      {
+        action: 'rewrite',
+        preset: 'make-formal',
+        providerId: 'test-provider',
+        tabId: 7,
+      },
+      {
+        getSettingsImpl: async () => getTestSettings(),
+        getProviderImpl: () => provider,
+        resolveProviderCredential: async () => 'stored-provider-key',
+        thunderbird,
+      }
+    );
+
+    expect(providerCalls[0].user).toContain('<p>See below</p>');
+    expect(providerCalls[0].user).not.toContain('Forwarded Message');
+    expect(thunderbird.setCalls[0].details.body).toBe(`<p>Please see below</p>${forwarded}`);
+  });
+
+  it('refuses a full-mail rewrite when only a quoted reply remains', async () => {
+    const providerCalls = [];
+    const thunderbird = createThunderbird(
+      '<div class="moz-cite-prefix">On 5/25/26, Sam wrote:</div>' +
+        '<blockquote type="cite"><p>Earlier</p></blockquote>'
+    );
+    const provider = createProvider('<p>should not run</p>', providerCalls);
+
+    await expect(
+      rewriteComposeDraft(
+        {
+          action: 'rewrite',
+          preset: 'make-formal',
+          providerId: 'test-provider',
+          tabId: 7,
+        },
+        {
+          getSettingsImpl: async () => getTestSettings(),
+          getProviderImpl: () => provider,
+          resolveProviderCredential: async () => 'stored-provider-key',
+          thunderbird,
+        }
+      )
+    ).rejects.toThrow(/quoted reply/i);
+    expect(providerCalls).toHaveLength(0);
+  });
+
   it('builds translate instructions with a target language', async () => {
     const providerCalls = [];
     const thunderbird = createThunderbird('<p>Hello</p>');
