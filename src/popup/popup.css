@@ -273,3 +273,74 @@ textarea:disabled {
   cursor: not-allowed;
   opacity: 0.55;
 }
+
+.modal-overlay {
+  align-items: center;
+  background: oklch(0.2 0.02 245 / 0.55);
+  display: flex;
+  inset: 0;
+  justify-content: center;
+  padding: 18px;
+  position: fixed;
+  z-index: 20;
+}
+
+.modal-card {
+  background: var(--surface);
+  border: 1px solid var(--line);
+  border-radius: 12px;
+  box-shadow: 0 14px 36px oklch(0.15 0.02 245 / 0.4);
+  display: grid;
+  gap: 12px;
+  max-width: 312px;
+  padding: 18px;
+}
+
+.modal-title {
+  font-size: 14px;
+  font-weight: 750;
+  line-height: 1.25;
+  margin: 0;
+}
+
+.modal-body {
+  color: var(--muted);
+  font-size: 12px;
+  line-height: 1.45;
+  margin: 0;
+}
+
+.modal-actions {
+  display: flex;
+  gap: 8px;
+  justify-content: flex-end;
+}
+
+.modal-actions .primary-action,
+.modal-actions .secondary-action {
+  height: 34px;
+  padding: 0 14px;
+  width: auto;
+}
+
+.secondary-action {
+  background: var(--panel);
+  border: 1px solid var(--line);
+  border-radius: 7px;
+  color: var(--text);
+  cursor: pointer;
+  font-weight: 700;
+  transition:
+    background-color 160ms ease-out,
+    border-color 160ms ease-out;
+}
+
+.secondary-action:hover {
+  background: var(--panel-strong);
+}
+
+.secondary-action:focus-visible {
+  border-color: var(--accent);
+  box-shadow: 0 0 0 3px oklch(0.82 0.08 252 / 0.34);
+  outline: none;
+}

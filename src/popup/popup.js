@@ -16,6 +16,11 @@ const targetLanguage = document.querySelector('#target-language');
 const allowImageRelocation = document.querySelector('#allow-image-relocation');
 const themeToggle = document.querySelector('#theme-toggle');
 const presetButtons = [...document.querySelectorAll('[data-preset]')];
+const confirmModal = document.querySelector('#confirm-modal');
+const confirmCancelButton = document.querySelector('#confirm-cancel');
+const confirmFullRewriteButton = document.querySelector('#confirm-full-rewrite');
+
+const REWRITE_CANCELED = Symbol('rewrite-canceled');
 
 let activeTabId = null;
 let optionsSnapshot = null;
@@ -196,34 +201,77 @@ async function getSelectedText() {
   return (results ?? []).map((entry) => entry?.result?.trim()).find(Boolean) ?? '';
 }
 
-async function currentPayload() {
-  const custom = customPrompt.value.trim();
-  const provider = getSelectedProvider();
-  const modelId = modelSelect.value;
-  const customModel = customModelInput.value.trim();
-  let selectionText;
+function confirmFullRewrite() {
+  return new Promise((resolve) => {
+    let settled = false;
 
-  if (modelId === 'custom' && !customModel) {
-    throw new Error('Enter a custom model.');
-  }
+    function finish(confirmed) {
+      if (settled) {
+        return;
+      }
+      settled = true;
+      confirmModal.hidden = true;
+      confirmFullRewriteButton.removeEventListener('click', onConfirm);
+      confirmCancelButton.removeEventListener('click', onCancel);
+      confirmModal.removeEventListener('click', onBackdrop);
+      document.removeEventListener('keydown', onKeydown);
+      resolve(confirmed);
+    }
 
-  if (!selectedProviderConfigured()) {
-    throw new Error('Save this provider in options before rewriting.');
-  }
+    function onConfirm() {
+      finish(true);
+    }
 
+    function onCancel() {
+      finish(false);
+    }
+
+    function onBackdrop(event) {
+      if (event.target === confirmModal) {
+        finish(false);
+      }
+    }
+
+    function onKeydown(event) {
+      if (event.key === 'Escape') {
+        finish(false);
+      }
+    }
+
+    confirmFullRewriteButton.addEventListener('click', onConfirm);
+    confirmCancelButton.addEventListener('click', onCancel);
+    confirmModal.addEventListener('click', onBackdrop);
+    document.addEventListener('keydown', onKeydown);
+
+    confirmModal.hidden = false;
+    confirmFullRewriteButton.focus();
+  });
+}
+
+async function resolveSelectionText(custom) {
   if (selectedPreset === 'reply-draft' && !custom) {
-    selectionText = await getSelectedText();
+    const selectionText = await getSelectedText();
 
     if (!selectionText) {
       throw new Error('Select text in the compose window to draft a reply.');
     }
-  } else {
-    selectionText = await getSelectedText().catch(() => '');
 
-    if (!selectionText && !globalThis.confirm('Rewrite full mail?')) {
-      throw new Error('Rewrite canceled.');
-    }
+    return selectionText;
   }
+
+  const selectionText = await getSelectedText().catch(() => '');
+
+  if (selectionText) {
+    return selectionText;
+  }
+
+  return (await confirmFullRewrite()) ? '' : REWRITE_CANCELED;
+}
+
+function buildRewritePayload(custom, selectionText) {
+  const provider = getSelectedProvider();
+  const modelId = modelSelect.value;
+  const customModel = customModelInput.value.trim();
 
   return {
     action: 'rewrite',
@@ -260,11 +308,27 @@ async function detectComposeTab() {
 
 async function submitRewrite() {
   setError(null);
+
+  const custom = customPrompt.value.trim();
+
+  if (modelSelect.value === 'custom' && !customModelInput.value.trim()) {
+    throw new Error('Enter a custom model.');
+  }
+
+  if (!selectedProviderConfigured()) {
+    throw new Error('Save this provider in options before rewriting.');
+  }
+
+  const selectionText = await resolveSelectionText(custom);
+
+  if (selectionText === REWRITE_CANCELED) {
+    return;
+  }
+
   setControlsDisabled(true);
   status.textContent = 'Rewriting draft...';
 
-  const payload = await currentPayload();
-  const result = await sendMessage(payload);
+  const result = await sendMessage(buildRewritePayload(custom, selectionText));
 
   status.textContent =
     result.scope === 'selection' ? 'Selected text rewritten.' : 'Draft rewritten.';

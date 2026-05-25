@@ -60,7 +60,7 @@
 
         <label class="checkbox-field">
           <input id="allow-image-relocation" type="checkbox" />
-          <span>Let AI touch images/media</span>
+          <span>Let the AI move inline images (off keeps every image in place)</span>
         </label>
 
         <label class="field">
@@ -95,6 +95,32 @@
         <button id="rewrite" class="primary-action" type="submit" disabled>Rewrite draft</button>
       </form>
     </main>
+
+    <div
+      id="confirm-modal"
+      class="modal-overlay"
+      role="dialog"
+      aria-modal="true"
+      aria-labelledby="confirm-modal-title"
+      aria-describedby="confirm-modal-body"
+      hidden
+    >
+      <div class="modal-card" role="document">
+        <h2 id="confirm-modal-title" class="modal-title">Rewrite the entire mail?</h2>
+        <p id="confirm-modal-body" class="modal-body">
+          No text is selected, so ThunderClaude will rewrite the whole draft, including any quoted
+          reply or forwarded thread, which may lose its original styling. Cancel and highlight just
+          the text you want changed to rewrite only that part.
+        </p>
+        <div class="modal-actions">
+          <button id="confirm-cancel" class="secondary-action" type="button">Cancel</button>
+          <button id="confirm-full-rewrite" class="primary-action" type="button">
+            Rewrite entire mail
+          </button>
+        </div>
+      </div>
+    </div>
+
     <script type="module" src="popup.js"></script>
   </body>
 </html>
