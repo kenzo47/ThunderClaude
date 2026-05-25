@@ -14,7 +14,7 @@ must read `AGENTS.md` before changing files.
 
 ## Current Status
 
-The latest release is `v0.1.1`. Development loading and local packaging
+The latest release is `v0.1.2`. Development loading and local packaging
 work; the add-on is not yet listed on addons.thunderbird.net.
 
 ## Features
@@ -77,7 +77,7 @@ Prepare the unpacked extension files:
 pnpm build
 ```
 
-This writes `dist/unpacked/` for inspection and `dist/thunderclaude-0.1.1.xpi`
+This writes `dist/unpacked/` for inspection and `dist/thunderclaude-0.1.2.xpi`
 for local installation testing.
 
 ## Install
@@ -107,7 +107,7 @@ Then install it:
 
 1. Open Thunderbird Add-ons Manager.
 2. Use the gear menu to choose "Install Add-on From File".
-3. Select `dist/thunderclaude-0.1.1.xpi`.
+3. Select `dist/thunderclaude-0.1.2.xpi`.
 
 Thunderbird's official add-on install guide documents the Add-ons Manager file
 install flow:
