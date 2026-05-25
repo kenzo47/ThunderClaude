@@ -320,6 +320,7 @@ textarea:disabled {
 .modal-actions .secondary-action {
   height: 34px;
   padding: 0 14px;
+  white-space: nowrap;
   width: auto;
 }
 
