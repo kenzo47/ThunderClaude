@@ -118,5 +118,17 @@ Planned captures:
 
 ## License
 
-License selection is deferred. Until a `LICENSE` file is added, this repository
-is all rights reserved.
+Copyright (C) 2026 Kenzo Wijnants
+
+ThunderClaude is free software: you can redistribute it and/or modify it under
+the terms of the **GNU General Public License v3.0** as published by the Free
+Software Foundation. See [`LICENSE`](LICENSE) for the full text.
+
+This means you are free to use, study, fork, and modify ThunderClaude. If you
+distribute a modified version, you must release your changes under the same
+GPL-3.0 license with source — so nobody can take this code, close it up, and
+resell it as a proprietary product.
+
+ThunderClaude is distributed in the hope that it will be useful, but WITHOUT ANY
+WARRANTY; without even the implied warranty of MERCHANTABILITY or FITNESS FOR A
+PARTICULAR PURPOSE. See the GNU General Public License for more details.
