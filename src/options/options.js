@@ -1,5 +1,6 @@
 import { warn } from '../lib/log.js';
 import { ensureCustomEndpointPermission } from '../lib/host-permissions.js';
+import { isOllamaLocalhostEndpoint } from '../lib/local-llm.js';
 
 const thunderbird = globalThis.messenger ?? globalThis.browser;
 
@@ -25,15 +26,6 @@ const themeToggle = document.querySelector('#theme-toggle');
 
 let snapshot = null;
 let selectedProviderId = null;
-
-function isOllamaBaseUrl(value) {
-  try {
-    const url = new URL(value);
-    return ['localhost', '127.0.0.1', '[::1]'].includes(url.hostname) && url.port === '11434';
-  } catch {
-    return false;
-  }
-}
 
 function setStatus(message, tone = 'neutral') {
   status.textContent = message;
@@ -125,7 +117,8 @@ function renderProviderForm() {
 }
 
 function renderLocalAccess(provider = getSelectedProvider(), config = getSelectedConfig()) {
-  const showLocalAccess = provider.id === 'local-llms' && isOllamaBaseUrl(baseUrl.value.trim());
+  const showLocalAccess =
+    provider.id === 'local-llms' && isOllamaLocalhostEndpoint(baseUrl.value.trim());
 
   localAccessField.hidden = !showLocalAccess;
   localAccess.checked = showLocalAccess ? config.localAccessEnabled !== false : false;
@@ -154,7 +147,7 @@ function providerPayload() {
     defaultModel: model,
     keyMode: provider.id === 'local-llms' ? 'none' : 'encrypted',
     localAccessEnabled:
-      provider.id === 'local-llms' && isOllamaBaseUrl(baseUrl.value.trim())
+      provider.id === 'local-llms' && isOllamaLocalhostEndpoint(baseUrl.value.trim())
         ? localAccess.checked
         : false,
     providerId: provider.id,
