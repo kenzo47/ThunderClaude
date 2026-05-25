@@ -84,9 +84,7 @@ const SIGNATURE_ALLOWED_STYLE_PROPERTIES = new Set([
 ]);
 const URL_STYLE_PATTERN = /(?:expression|url)\s*\(/i;
 const SAFE_HREF_PATTERN = /^(?:https?:|mailto:)/i;
-const CID_SRC_PATTERN = /^cid:/i;
-const SAFE_SIGNATURE_IMG_SRC_PATTERN =
-  /^(?:cid:|https?:|data:image\/(?:gif|jpeg|png|webp);base64,)/i;
+const SAFE_IMG_SRC_PATTERN = /^(?:cid:|https?:|data:image\/(?:gif|jpeg|png|webp);base64,)/i;
 
 export class SanitizerError extends Error {
   constructor(message, { code = 'sanitizer_error' } = {}) {
@@ -117,7 +115,7 @@ function normalizeAllowedImages(allowedCidImageHtml) {
       (imageHtml) =>
         typeof imageHtml === 'string' &&
         /^<\s*img\b/i.test(imageHtml) &&
-        CID_SRC_PATTERN.test(readAttributeFallback(imageHtml, 'src'))
+        SAFE_IMG_SRC_PATTERN.test(readAttributeFallback(imageHtml, 'src'))
     )
   );
 }
@@ -164,11 +162,11 @@ function sanitizeStyle(value, allowedStyleProperties = ALLOWED_STYLE_PROPERTIES)
   return safeDeclarations.join('; ');
 }
 
-function isAllowedCidImage(element, allowedImages) {
+function isAllowedImage(element, allowedImages) {
   return (
     element.tagName.toLowerCase() === 'img' &&
     allowedImages.has(element.outerHTML) &&
-    CID_SRC_PATTERN.test(element.getAttribute('src') ?? '')
+    SAFE_IMG_SRC_PATTERN.test(element.getAttribute('src') ?? '')
   );
 }
 
@@ -219,7 +217,7 @@ function sanitizeSignatureElementAttributes(element, originalAttributes) {
 
   if (tagName === 'img') {
     const src = originalAttributes.get('src')?.trim() ?? '';
-    if (SAFE_SIGNATURE_IMG_SRC_PATTERN.test(src)) {
+    if (SAFE_IMG_SRC_PATTERN.test(src)) {
       element.setAttribute('src', src);
     }
   }
@@ -269,7 +267,7 @@ function sanitizeNode(node, { allowedElements, allowedImages, signatureMode = fa
   const element = node;
   const tagName = element.tagName.toLowerCase();
 
-  if (!signatureMode && isAllowedCidImage(element, allowedImages)) {
+  if (!signatureMode && isAllowedImage(element, allowedImages)) {
     return;
   }
 
@@ -356,7 +354,7 @@ function sanitizeSignatureAttributesFallback(tagName, rawAttributes) {
 
   if (tagName === 'img') {
     const src = readAttributeFromRaw(rawAttributes, 'src').trim();
-    if (SAFE_SIGNATURE_IMG_SRC_PATTERN.test(src)) {
+    if (SAFE_IMG_SRC_PATTERN.test(src)) {
       attributes.push(`src="${escapeHtml(src)}"`);
     }
   }

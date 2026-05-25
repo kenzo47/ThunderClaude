@@ -75,6 +75,21 @@ describe('inline media', () => {
     ]);
   });
 
+  it('tokenizes every image when includeAllImages is set', () => {
+    const result = tokenize(
+      '<p>A<img src="cid:first@example">B<img src="https://example.test/a.png">C' +
+        '<img src="data:image/png;base64,iVBORw0KGgo="></p>',
+      { DOMParserImpl: null, includeAllImages: true }
+    );
+
+    expect(result.text).toBe('<p>A[[TC_IMG_1]]B[[TC_IMG_2]]C[[TC_IMG_3]]</p>');
+    expect(result.media.map((entry) => entry.outerHTML)).toEqual([
+      '<img src="cid:first@example">',
+      '<img src="https://example.test/a.png">',
+      '<img src="data:image/png;base64,iVBORw0KGgo=">',
+    ]);
+  });
+
   it('restores tokens after the LLM moves them', () => {
     const { mediaMap } = tokenize(
       '<p>Start<img src="cid:first@example">Middle<img src="cid:second@example">End</p>',

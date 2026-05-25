@@ -36,7 +36,7 @@ function serializeMediaEntries(mediaMap) {
   }));
 }
 
-function tokenizeWithDomParser(html, DomParserImpl) {
+function tokenizeWithDomParser(html, DomParserImpl, includeAllImages) {
   const parser = new DomParserImpl();
   const document = parser.parseFromString(html, 'text/html');
   const mediaMap = createMediaMap();
@@ -44,7 +44,7 @@ function tokenizeWithDomParser(html, DomParserImpl) {
   for (const image of document.querySelectorAll('img')) {
     const src = image.getAttribute('src') ?? '';
 
-    if (!CID_SRC_PATTERN.test(src)) {
+    if (!includeAllImages && !CID_SRC_PATTERN.test(src)) {
       continue;
     }
 
@@ -68,10 +68,10 @@ function readImageSrc(imageTag) {
   return srcMatch?.[1] ?? srcMatch?.[2] ?? srcMatch?.[3] ?? '';
 }
 
-function tokenizeWithScanner(html) {
+function tokenizeWithScanner(html, includeAllImages) {
   const mediaMap = createMediaMap();
   const text = html.replace(/<img\b[^>]*>/gi, (imageTag) => {
-    if (!CID_SRC_PATTERN.test(readImageSrc(imageTag))) {
+    if (!includeAllImages && !CID_SRC_PATTERN.test(readImageSrc(imageTag))) {
       return imageTag;
     }
 
@@ -89,7 +89,10 @@ function tokenizeWithScanner(html) {
   };
 }
 
-export function tokenize(html, { DOMParserImpl = globalThis.DOMParser } = {}) {
+export function tokenize(
+  html,
+  { DOMParserImpl = globalThis.DOMParser, includeAllImages = false } = {}
+) {
   if (typeof html !== 'string') {
     throw new InlineMediaError('Draft body HTML must be a string.', {
       code: 'invalid_inline_media_input',
@@ -99,10 +102,10 @@ export function tokenize(html, { DOMParserImpl = globalThis.DOMParser } = {}) {
   assertNoReservedTokens(html);
 
   if (typeof DOMParserImpl === 'function') {
-    return tokenizeWithDomParser(html, DOMParserImpl);
+    return tokenizeWithDomParser(html, DOMParserImpl, includeAllImages);
   }
 
-  return tokenizeWithScanner(html);
+  return tokenizeWithScanner(html, includeAllImages);
 }
 
 function normalizeMediaMap(mediaMap) {

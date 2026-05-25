@@ -94,6 +94,29 @@ describe('HTML sanitizer', () => {
         allowedCidImageHtml: ['<img src="https://example.test/x.png">'],
         DOMParserImpl: null,
       })
+    ).toBe('<p><img src="https://example.test/x.png"></p>');
+
+    expect(
+      allowlistHtml('<p><img src="data:image/png;base64,iVBORw0KGgo="></p>', {
+        allowedCidImageHtml: ['<img src="data:image/png;base64,iVBORw0KGgo=">'],
+        DOMParserImpl: null,
+      })
+    ).toBe('<p><img src="data:image/png;base64,iVBORw0KGgo="></p>');
+  });
+
+  it('keeps body images only when their exact markup is allowlisted', () => {
+    expect(
+      allowlistHtml('<p><img src="https://example.test/injected.png"></p>', {
+        allowedCidImageHtml: ['<img src="https://example.test/original.png">'],
+        DOMParserImpl: null,
+      })
+    ).toBe('<p></p>');
+
+    expect(
+      allowlistHtml('<p><img src="file:///etc/passwd"></p>', {
+        allowedCidImageHtml: ['<img src="file:///etc/passwd">'],
+        DOMParserImpl: null,
+      })
     ).toBe('<p></p>');
   });
 

@@ -285,7 +285,7 @@ async function rewriteSelectedComposeText({
   tokenizeImpl,
   DOMParserImpl,
 }) {
-  const tokenizedBody = tokenizeImpl(composeBody);
+  const tokenizedBody = tokenizeImpl(composeBody, { includeAllImages: true });
   replaceSelectedTextWithHtml(composeBody, selectedText, '', {
     DOMParserImpl,
   });
@@ -306,7 +306,7 @@ async function rewriteSelectedComposeText({
   const body = replaceSelectedTextWithHtml(composeBody, selectedText, replacementHtml, {
     DOMParserImpl,
   });
-  const rewrittenBody = tokenizeImpl(body);
+  const rewrittenBody = tokenizeImpl(body, { includeAllImages: true });
 
   assertInlineMediaPreserved(tokenizedBody.media, rewrittenBody.media);
 
@@ -449,7 +449,10 @@ export async function rewriteComposeDraft(message, options = {}) {
     };
   }
 
-  const tokenized = tokenizeImpl(signatureSplit.bodyHtml);
+  const tokenized = tokenizeImpl(signatureSplit.bodyHtml, { includeAllImages: true });
+  // Body images of any scheme (cid, http(s), data:image) are tokenized so the
+  // model cannot drop or restyle them; the allowlist below is keyed on their
+  // exact original markup, so only the user's own images survive sanitizing.
   const allowedCidImageHtml = [...tokenized.media, ...tokenizedSignature.media].map(
     (entry) => entry.outerHTML
   );

@@ -135,6 +135,69 @@ describe('rewrite orchestrator', () => {
     );
   });
 
+  it('preserves remote and data images in place when relocation is disabled', async () => {
+    const providerCalls = [];
+    const thunderbird = createThunderbird(
+      '<p>Hello<img src="https://example.test/a.png">there' +
+        '<img src="data:image/png;base64,iVBORw0KGgo="></p>'
+    );
+    const provider = createProvider((input, index) => {
+      expect(input.system).toContain('one text segment');
+      expect(input.user).not.toContain('[[TC_IMG_');
+      expect(input.user).not.toContain('example.test');
+      expect(input.user).not.toContain('data:image');
+      return index === 0 ? '<p>Formal greeting ' : ' and follow-up ';
+    }, providerCalls);
+
+    await rewriteComposeDraft(
+      {
+        action: 'rewrite',
+        allowImageRelocation: false,
+        preset: 'make-formal',
+        providerId: 'test-provider',
+        tabId: 42,
+      },
+      {
+        getSettingsImpl: async () => getTestSettings(),
+        getProviderImpl: () => provider,
+        resolveProviderCredential: async () => 'stored-provider-key',
+        thunderbird,
+      }
+    );
+
+    expect(providerCalls).toHaveLength(2);
+    expect(thunderbird.setCalls[0].details.body).toBe(
+      '<p>Formal greeting <img src="https://example.test/a.png"> and follow-up ' +
+        '<img src="data:image/png;base64,iVBORw0KGgo="></p>'
+    );
+  });
+
+  it('preserves remote inline media outside a selected text rewrite', async () => {
+    const thunderbird = createThunderbird('<p>Hello<img src="https://example.test/a.png"> Bob</p>');
+    const provider = createProvider('<em>Robert</em>');
+
+    await rewriteComposeDraft(
+      {
+        action: 'rewrite',
+        preset: 'make-formal',
+        providerId: 'test-provider',
+        selectionText: 'Bob',
+        tabId: 7,
+      },
+      {
+        DOMParserImpl: null,
+        getSettingsImpl: async () => getTestSettings(),
+        getProviderImpl: () => provider,
+        resolveProviderCredential: async () => 'stored-provider-key',
+        thunderbird,
+      }
+    );
+
+    expect(thunderbird.setCalls[0].details.body).toBe(
+      '<p>Hello<img src="https://example.test/a.png"> <em>Robert</em></p>'
+    );
+  });
+
   it('strips invented image tokens from fixed segment rewrites', async () => {
     const thunderbird = createThunderbird(
       '<p>Hello<img src="cid:first"><img src="cid:second"></p>'
