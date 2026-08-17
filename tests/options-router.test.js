@@ -101,7 +101,7 @@ describe('options router', () => {
     expect(snapshot.settings.theme).toBe('light');
     expect(snapshot.providerConfigs.anthropic).toMatchObject({
       customBaseUrl: 'https://api.anthropic.com/v1',
-      defaultModel: 'claude-opus-4-7',
+      defaultModel: 'claude-opus-5',
       hasKey: false,
       keyMode: 'encrypted',
     });
@@ -146,7 +146,7 @@ describe('options router', () => {
       saveProviderOptions(
         {
           apiKey: 'sk-test-fake-key-do-not-use',
-          defaultModel: 'gpt-5.5',
+          defaultModel: 'gpt-5.6-sol',
           keyMode: 'plain',
           providerId: 'openai',
         },
@@ -161,7 +161,7 @@ describe('options router', () => {
     await saveProviderOptions(
       {
         apiKey: 'sk-test-fake-key-do-not-use',
-        defaultModel: 'gpt-5.5',
+        defaultModel: 'gpt-5.6-sol',
         keyMode: 'encrypted',
         providerId: 'openai',
       },
@@ -170,7 +170,7 @@ describe('options router', () => {
 
     const snapshot = await saveProviderOptions(
       {
-        defaultModel: 'gpt-5.5',
+        defaultModel: 'gpt-5.6-sol',
         keyMode: 'encrypted',
         providerId: 'openai',
       },
@@ -216,7 +216,7 @@ describe('options router', () => {
       {
         apiKey: 'sk-test-fake-key-do-not-use',
         customBaseUrl: 'https://api.openai.com/v1',
-        defaultModel: 'gpt-5.5',
+        defaultModel: 'gpt-5.6-sol',
         keyMode: 'encrypted',
         providerId: 'openai',
       },
@@ -228,7 +228,7 @@ describe('options router', () => {
         {
           apiKey: '',
           customBaseUrl: 'https://api.openai.com/v1',
-          defaultModel: 'gpt-5.5',
+          defaultModel: 'gpt-5.6-sol',
           keyMode: 'encrypted',
           providerId: 'openai',
         },
@@ -262,7 +262,7 @@ describe('options router', () => {
       {
         apiKey: 'sk-test-fake-key-do-not-use',
         customBaseUrl: 'https://api.openai.com/v1',
-        defaultModel: 'gpt-5.5',
+        defaultModel: 'gpt-5.6-sol',
         keyMode: 'encrypted',
         providerId: 'openai',
       },
@@ -292,7 +292,7 @@ describe('options router', () => {
         {
           apiKey: 'sk-test-fake-key-do-not-use',
           customBaseUrl: 'https://api.openai.com/v1',
-          defaultModel: 'gpt-5.5',
+          defaultModel: 'gpt-5.6-sol',
           keyMode: 'encrypted',
           providerId: 'openai',
         },
@@ -323,7 +323,7 @@ describe('options router', () => {
     await saveProviderOptions(
       {
         apiKey: 'sk-test-fake-key-do-not-use',
-        defaultModel: 'gpt-5.5',
+        defaultModel: 'gpt-5.6-sol',
         keyMode: 'encrypted',
         providerId: 'openai',
       },
@@ -331,7 +331,7 @@ describe('options router', () => {
     );
     await testProviderOptions(
       {
-        defaultModel: 'gpt-5.5',
+        defaultModel: 'gpt-5.6-sol',
         keyMode: 'encrypted',
         providerId: 'openai',
       },
@@ -362,7 +362,7 @@ describe('options router', () => {
     await expect(
       testProviderOptions(
         {
-          defaultModel: 'gpt-5.5',
+          defaultModel: 'gpt-5.6-sol',
           keyMode: 'encrypted',
           providerId: 'openai',
         },
@@ -377,7 +377,7 @@ describe('options router', () => {
     await saveProviderOptions(
       {
         apiKey: 'sk-test-fake-key-do-not-use',
-        defaultModel: 'gpt-5.5',
+        defaultModel: 'gpt-5.6-sol',
         keyMode: 'encrypted',
         providerId: 'openai',
       },
@@ -387,7 +387,7 @@ describe('options router', () => {
     await expect(
       testProviderOptions(
         {
-          defaultModel: 'gpt-5.5',
+          defaultModel: 'gpt-5.6-sol',
           keyMode: 'encrypted',
           providerId: 'openai',
         },
@@ -417,7 +417,7 @@ describe('options router', () => {
       testProviderOptions(
         {
           customBaseUrl: 'http://localhost:11434/api',
-          defaultModel: 'llama3.2',
+          defaultModel: 'qwen3.6',
           localAccessEnabled: false,
           providerId: 'local-llms',
         },
@@ -432,7 +432,7 @@ describe('options router', () => {
     const snapshot = await saveProviderOptions(
       {
         customBaseUrl: 'http://localhost:11434/api',
-        defaultModel: 'llama3.2',
+        defaultModel: 'qwen3.6',
         keyMode: 'none',
         localAccessEnabled: true,
         providerId: 'local-llms',
@@ -478,7 +478,7 @@ describe('options router', () => {
   it('requires provider verification before onboarding completes', async () => {
     await saveProviderOptions(
       {
-        defaultModel: 'llama3.2',
+        defaultModel: 'qwen3.6',
         keyMode: 'none',
         localAccessEnabled: true,
         providerId: 'local-llms',
@@ -497,7 +497,7 @@ describe('options router', () => {
     await saveProviderOptions(
       {
         apiKey: 'sk-test-fake-key-do-not-use',
-        defaultModel: 'gpt-5.5',
+        defaultModel: 'gpt-5.6-sol',
         keyMode: 'encrypted',
         providerId: 'openai',
       },
@@ -508,7 +508,7 @@ describe('options router', () => {
       testProviderOptions(
         {
           apiKey: 'sk-test-other-key-do-not-use',
-          defaultModel: 'gpt-5.5',
+          defaultModel: 'gpt-5.6-sol',
           keyMode: 'encrypted',
           providerId: 'openai',
         },
@@ -532,7 +532,7 @@ describe('options router', () => {
     await saveProviderOptions(
       {
         apiKey: 'sk-test-fake-key-do-not-use',
-        defaultModel: 'gpt-5.5',
+        defaultModel: 'gpt-5.6-sol',
         keyMode: 'encrypted',
         providerId: 'openai',
       },
@@ -540,7 +540,7 @@ describe('options router', () => {
     );
     await testProviderOptions(
       {
-        defaultModel: 'gpt-5.5',
+        defaultModel: 'gpt-5.6-sol',
         keyMode: 'encrypted',
         providerId: 'openai',
       },
@@ -554,7 +554,7 @@ describe('options router', () => {
       testProviderOptions(
         {
           apiKey: 'sk-test-other-key-do-not-use',
-          defaultModel: 'gpt-5.5',
+          defaultModel: 'gpt-5.6-sol',
           keyMode: 'encrypted',
           providerId: 'openai',
         },
@@ -577,7 +577,7 @@ describe('options router', () => {
   it('marks onboarding complete for a configured and verified provider', async () => {
     await saveProviderOptions(
       {
-        defaultModel: 'llama3.2',
+        defaultModel: 'qwen3.6',
         keyMode: 'none',
         localAccessEnabled: true,
         providerId: 'local-llms',
@@ -587,7 +587,7 @@ describe('options router', () => {
     await expect(
       testProviderOptions(
         {
-          defaultModel: 'llama3.2',
+          defaultModel: 'qwen3.6',
           localAccessEnabled: true,
           providerId: 'local-llms',
         },

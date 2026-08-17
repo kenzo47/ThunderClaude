@@ -15,12 +15,12 @@ function jsonResponse(body, { ok = true, status = 200 } = {}) {
 describe('anthropic provider', () => {
   it('matches the provider contract', () => {
     expect(anthropicProvider).toMatchObject({
-      defaultModel: 'claude-opus-4-7',
+      defaultModel: 'claude-opus-5',
       endpointHost: 'api.anthropic.com',
       id: 'anthropic',
       keyHelpUrl: 'https://console.anthropic.com/settings/keys',
       label: 'Anthropic',
-      modelList: ['claude-opus-4-7', 'claude-sonnet-4-6', 'claude-haiku-4-5'],
+      modelList: ['claude-opus-5', 'claude-sonnet-5', 'claude-fable-5', 'claude-haiku-4-5'],
     });
   });
 
@@ -42,7 +42,7 @@ describe('anthropic provider', () => {
       anthropicProvider.rewrite({
         fetchImpl,
         key: 'sk-test-fake-key-do-not-use',
-        model: 'claude-sonnet-4-6',
+        model: 'claude-sonnet-5',
         system: 'Rewrite email.',
         user: '<p>Hello.</p>',
       })
@@ -68,7 +68,7 @@ describe('anthropic provider', () => {
           role: 'user',
         },
       ],
-      model: 'claude-sonnet-4-6',
+      model: 'claude-sonnet-5',
       system: 'Rewrite email.',
     });
   });

@@ -6,6 +6,8 @@ import './providers/minimax.js';
 import './providers/openai-compatible.js';
 import './providers/openai.js';
 import './providers/openrouter.js';
+import './providers/xai.js';
+import './providers/zai.js';
 
 import { isOllamaBaseUrl } from './providers/local-llms.js';
 import { getProvider, listProviders } from './providers/index.js';

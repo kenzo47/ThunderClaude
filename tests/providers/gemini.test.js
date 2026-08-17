@@ -44,12 +44,17 @@ function providerError(status, message, type) {
 describe('gemini provider', () => {
   it('matches the provider contract', () => {
     expect(geminiProvider).toMatchObject({
-      defaultModel: 'gemini-2.5-pro',
+      defaultModel: 'gemini-3.7-flash',
       endpointHost: 'generativelanguage.googleapis.com',
       id: 'gemini',
       keyHelpUrl: 'https://aistudio.google.com/app/apikey',
       label: 'Google Gemini',
-      modelList: ['gemini-2.5-pro', 'gemini-2.5-flash', 'gemini-2.5-flash-lite'],
+      modelList: [
+        'gemini-3.7-flash',
+        'gemini-3.6-flash',
+        'gemini-3.5-flash-lite',
+        'gemini-3.1-pro-preview',
+      ],
     });
   });
 
@@ -64,7 +69,7 @@ describe('gemini provider', () => {
       geminiProvider.rewrite({
         fetchImpl,
         key: 'sk-test-fake-key-do-not-use',
-        model: 'gemini-2.5-flash',
+        model: 'gemini-3.6-flash',
         system: 'Rewrite email.',
         user: '<p>Hello.</p>',
       })
@@ -72,7 +77,7 @@ describe('gemini provider', () => {
 
     expect(calls).toHaveLength(1);
     expect(calls[0].url).toBe(
-      'https://generativelanguage.googleapis.com/v1beta/models/gemini-2.5-flash:generateContent'
+      'https://generativelanguage.googleapis.com/v1beta/models/gemini-3.6-flash:generateContent'
     );
     expect(calls[0].options).toMatchObject({
       credentials: 'omit',

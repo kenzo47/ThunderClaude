@@ -6,16 +6,18 @@ import { defineChatProviderBehaviorTests } from './chat-provider-test-helper.js'
 describe('openrouter provider', () => {
   it('matches the provider contract', () => {
     expect(openrouterProvider).toMatchObject({
-      defaultModel: 'openai/gpt-5.5',
+      defaultModel: 'openai/gpt-5.6-sol',
       endpointHost: 'openrouter.ai',
       id: 'openrouter',
       keyHelpUrl: 'https://openrouter.ai/settings/keys',
       label: 'OpenRouter',
       modelList: [
-        'openai/gpt-5.5',
-        'openai/gpt-5.4',
-        'anthropic/claude-opus-4.7',
-        'google/gemini-2.5-pro',
+        'openai/gpt-5.6-sol',
+        'openai/gpt-5.6-luna',
+        'anthropic/claude-opus-5',
+        'google/gemini-3.7-flash',
+        'x-ai/grok-4.6',
+        'z-ai/glm-5.2',
         'custom',
       ],
     });
@@ -36,10 +38,10 @@ describe('openrouter provider', () => {
             role: 'user',
           },
         ],
-        model: 'anthropic/claude-opus-4.7',
+        model: 'anthropic/claude-opus-5',
         stream: false,
       },
-      model: 'anthropic/claude-opus-4.7',
+      model: 'anthropic/claude-opus-5',
       url: 'https://openrouter.ai/api/v1/chat/completions',
     },
   });

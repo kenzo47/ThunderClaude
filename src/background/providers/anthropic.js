@@ -52,8 +52,8 @@ async function createMessage({
 const anthropicProvider = {
   id: 'anthropic',
   label: 'Anthropic',
-  defaultModel: 'claude-opus-4-7',
-  modelList: ['claude-opus-4-7', 'claude-sonnet-4-6', 'claude-haiku-4-5'],
+  defaultModel: 'claude-opus-5',
+  modelList: ['claude-opus-5', 'claude-sonnet-5', 'claude-fable-5', 'claude-haiku-4-5'],
   defaultBaseUrl: DEFAULT_BASE_URL,
   keyHelpUrl: 'https://console.anthropic.com/settings/keys',
   endpointHost: ENDPOINT_HOST,

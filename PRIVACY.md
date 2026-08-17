@@ -15,8 +15,8 @@ LLM provider endpoint you configure, and only when you ask for a rewrite.
 
 When — and only when — you trigger a rewrite, ThunderClaude sends the following
 to the API endpoint of the provider you configured (for example Anthropic,
-OpenAI, Google, DeepSeek, MiniMax, OpenRouter, or a custom/OpenAI-compatible
-endpoint):
+OpenAI, Google, xAI, Z.ai, DeepSeek, MiniMax, OpenRouter, or a
+custom/OpenAI-compatible endpoint):
 
 - The text of the email draft you are composing, or the portion you selected.
 - Your chosen instruction (a preset such as "Make formal", a target language,

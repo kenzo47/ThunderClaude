@@ -6,6 +6,8 @@ const REQUIRED_ENDPOINT_ORIGINS = new Set([
   'https://api.deepseek.com/*',
   'https://api.minimax.io/*',
   'https://api.openai.com/*',
+  'https://api.x.ai/*',
+  'https://api.z.ai/*',
   'https://generativelanguage.googleapis.com/*',
   'https://openrouter.ai/*',
 ]);

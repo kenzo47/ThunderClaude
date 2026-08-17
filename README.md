@@ -11,7 +11,7 @@ every inline image untouched by default.
 
 ## Current Status
 
-The latest release is `v0.1.2`, available from the
+The latest release is `v0.2.0`, available from the
 [GitHub Releases](https://github.com/kenzo47/ThunderClaude/releases) page.
 Listing on [addons.thunderbird.net](https://addons.thunderbird.net) is in
 progress; until it is approved, install the packaged XPI as described below.
@@ -27,9 +27,9 @@ progress; until it is approved, install the packaged XPI as described below.
 - **Inline images preserved by default**: every inline image (`cid:` attachment,
   remote, or `data:` image) stays exactly in place. An optional toggle lets the
   model move images when you want it to, and it can never silently drop one.
-- **Bring your own provider**: Anthropic, OpenAI, Gemini, MiniMax, DeepSeek,
-  OpenRouter, any OpenAI-compatible endpoint, or local models via Ollama or LM
-  Studio.
+- **Bring your own provider**: Anthropic, OpenAI, Gemini, xAI Grok, Z.ai GLM,
+  MiniMax, DeepSeek, OpenRouter, any OpenAI-compatible endpoint, or local models
+  via Ollama or LM Studio.
 - **Local-first key storage**: your API key is stored encrypted at rest and is
   sent only to the provider you configured. No telemetry.
 
@@ -58,8 +58,8 @@ before you depend on it, and a blank key field leaves an existing key in place.
 
 - Thunderbird 128 or newer.
 - At least one LLM provider:
-  - an API key for Anthropic, OpenAI, Gemini, MiniMax, DeepSeek, OpenRouter, or
-    any OpenAI-compatible endpoint, or
+  - an API key for Anthropic, OpenAI, Gemini, xAI Grok, Z.ai GLM, MiniMax,
+    DeepSeek, OpenRouter, or any OpenAI-compatible endpoint, or
   - a local model served by Ollama or LM Studio (no key required).
 - Node.js 22 or newer, only if you build from source.
 
@@ -97,7 +97,7 @@ Prepare the unpacked extension files:
 pnpm build
 ```
 
-This writes `dist/unpacked/` for inspection and `dist/thunderclaude-0.1.2.xpi`
+This writes `dist/unpacked/` for inspection and `dist/thunderclaude-0.2.0.xpi`
 for local installation testing.
 
 ## Install
@@ -127,7 +127,7 @@ Then install it:
 
 1. Open Thunderbird Add-ons Manager.
 2. Use the gear menu to choose "Install Add-on From File".
-3. Select `dist/thunderclaude-0.1.2.xpi`.
+3. Select `dist/thunderclaude-0.2.0.xpi`.
 
 Thunderbird's official add-on install guide documents the Add-ons Manager file
 install flow:

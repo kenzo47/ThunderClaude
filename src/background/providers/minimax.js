@@ -58,16 +58,8 @@ async function createChatCompletion({
 const minimaxProvider = {
   id: 'minimax',
   label: 'MiniMax',
-  defaultModel: 'MiniMax-M2.7',
-  modelList: [
-    'MiniMax-M2.7',
-    'MiniMax-M2.7-highspeed',
-    'MiniMax-M2.5',
-    'MiniMax-M2.5-highspeed',
-    'MiniMax-M2.1',
-    'MiniMax-M2.1-highspeed',
-    'MiniMax-M2',
-  ],
+  defaultModel: 'MiniMax-M3',
+  modelList: ['MiniMax-M3', 'MiniMax-M2.7', 'MiniMax-M2.7-highspeed'],
   defaultBaseUrl: DEFAULT_BASE_URL,
   keyHelpUrl: 'https://platform.minimax.io/user-center/basic-information/interface-key',
   endpointHost: ENDPOINT_HOST,

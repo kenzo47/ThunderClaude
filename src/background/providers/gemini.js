@@ -85,8 +85,13 @@ async function generateContent({
 const geminiProvider = {
   id: 'gemini',
   label: 'Google Gemini',
-  defaultModel: 'gemini-2.5-pro',
-  modelList: ['gemini-2.5-pro', 'gemini-2.5-flash', 'gemini-2.5-flash-lite'],
+  defaultModel: 'gemini-3.7-flash',
+  modelList: [
+    'gemini-3.7-flash',
+    'gemini-3.6-flash',
+    'gemini-3.5-flash-lite',
+    'gemini-3.1-pro-preview',
+  ],
   defaultBaseUrl: DEFAULT_BASE_URL,
   keyHelpUrl: 'https://aistudio.google.com/app/apikey',
   endpointHost: ENDPOINT_HOST,

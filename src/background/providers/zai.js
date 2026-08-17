@@ -1,7 +1,7 @@
 import { extractChatCompletionText, fetchProviderJson, registerProvider } from './index.js';
 
-const ENDPOINT_HOST = 'openrouter.ai';
-const DEFAULT_BASE_URL = `https://${ENDPOINT_HOST}/api/v1`;
+const ENDPOINT_HOST = 'api.z.ai';
+const DEFAULT_BASE_URL = `https://${ENDPOINT_HOST}/api/paas/v4`;
 const DEFAULT_MAX_TOKENS = 4096;
 
 function createChatCompletionsUrl(baseUrl = DEFAULT_BASE_URL) {
@@ -37,7 +37,7 @@ async function createChatCompletion({
           role: 'user',
         },
       ],
-      model: model ?? openrouterProvider.defaultModel,
+      model: model ?? zaiProvider.defaultModel,
       stream: false,
     }),
     endpointHost: new URL(url).hostname,
@@ -53,21 +53,13 @@ async function createChatCompletion({
   return extractChatCompletionText(body);
 }
 
-const openrouterProvider = {
-  id: 'openrouter',
-  label: 'OpenRouter',
-  defaultModel: 'openai/gpt-5.6-sol',
-  modelList: [
-    'openai/gpt-5.6-sol',
-    'openai/gpt-5.6-luna',
-    'anthropic/claude-opus-5',
-    'google/gemini-3.7-flash',
-    'x-ai/grok-4.6',
-    'z-ai/glm-5.2',
-    'custom',
-  ],
+const zaiProvider = {
+  id: 'zai',
+  label: 'Z.ai GLM',
+  defaultModel: 'glm-5.2',
+  modelList: ['glm-5.2', 'glm-5.1', 'glm-5-turbo', 'glm-4.7-flash'],
   defaultBaseUrl: DEFAULT_BASE_URL,
-  keyHelpUrl: 'https://openrouter.ai/settings/keys',
+  keyHelpUrl: 'https://z.ai/manage-apikey/apikey-list',
   endpointHost: ENDPOINT_HOST,
   async testConnection(key, options = {}) {
     try {
@@ -101,4 +93,4 @@ const openrouterProvider = {
   },
 };
 
-export default registerProvider(openrouterProvider);
+export default registerProvider(zaiProvider);

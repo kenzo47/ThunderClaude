@@ -3,7 +3,7 @@
   "name": "__MSG_extensionName__",
   "short_name": "TClaude",
   "description": "__MSG_extensionDescription__",
-  "version": "0.1.2",
+  "version": "0.2.0",
   "default_locale": "en",
   "browser_specific_settings": {
     "gecko": {
@@ -28,6 +28,8 @@
     "https://api.deepseek.com/*",
     "https://api.minimax.io/*",
     "https://api.openai.com/*",
+    "https://api.x.ai/*",
+    "https://api.z.ai/*",
     "https://generativelanguage.googleapis.com/*",
     "https://openrouter.ai/*"
   ],

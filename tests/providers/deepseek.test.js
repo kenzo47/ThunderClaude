@@ -11,7 +11,7 @@ describe('deepseek provider', () => {
       id: 'deepseek',
       keyHelpUrl: 'https://platform.deepseek.com/api_keys',
       label: 'DeepSeek',
-      modelList: ['deepseek-v4-flash', 'deepseek-v4-pro', 'deepseek-chat', 'deepseek-reasoner'],
+      modelList: ['deepseek-v4-flash', 'deepseek-v4-pro'],
     });
   });
 

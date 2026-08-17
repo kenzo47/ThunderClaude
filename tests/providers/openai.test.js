@@ -44,12 +44,12 @@ function providerError(status, message, type) {
 describe('openai provider', () => {
   it('matches the provider contract', () => {
     expect(openaiProvider).toMatchObject({
-      defaultModel: 'gpt-5.5',
+      defaultModel: 'gpt-5.6-sol',
       endpointHost: 'api.openai.com',
       id: 'openai',
       keyHelpUrl: 'https://platform.openai.com/api-keys',
       label: 'OpenAI',
-      modelList: ['gpt-5.5', 'gpt-5.4', 'gpt-5.4-mini', 'gpt-5.4-nano', 'gpt-4.1-nano'],
+      modelList: ['gpt-5.6-sol', 'gpt-5.6-terra', 'gpt-5.6-luna', 'gpt-5.5', 'gpt-5.4-mini'],
     });
   });
 
@@ -64,7 +64,7 @@ describe('openai provider', () => {
       openaiProvider.rewrite({
         fetchImpl,
         key: 'sk-test-fake-key-do-not-use',
-        model: 'gpt-5.4-mini',
+        model: 'gpt-5.6-luna',
         system: 'Rewrite email.',
         user: '<p>Hello.</p>',
       })
@@ -85,7 +85,7 @@ describe('openai provider', () => {
       input: '<p>Hello.</p>',
       instructions: 'Rewrite email.',
       max_output_tokens: 4096,
-      model: 'gpt-5.4-mini',
+      model: 'gpt-5.6-luna',
       store: false,
     });
   });

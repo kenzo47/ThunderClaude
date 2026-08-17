@@ -14,7 +14,7 @@ function successfulOllamaResponse(text = '<p>Rewritten draft.</p>') {
       content: text,
       role: 'assistant',
     },
-    model: 'llama3.2',
+    model: 'qwen3.6',
   });
 }
 
@@ -22,12 +22,12 @@ describe('local llms provider', () => {
   it('matches the provider contract', () => {
     expect(localLlmsProvider).toMatchObject({
       defaultBaseUrl: 'http://localhost:11434/api',
-      defaultModel: 'llama3.2',
+      defaultModel: 'qwen3.6',
       endpointHost: 'localhost',
       id: 'local-llms',
       keyHelpUrl: 'https://lmstudio.ai/docs/app/api/endpoints/openai/',
       label: 'Local LLMs',
-      modelList: ['llama3.2', 'gemma3', 'qwen3', 'mistral', 'custom'],
+      modelList: ['qwen3.6', 'gemma4', 'llama3.3', 'glm-4.7-flash', 'custom'],
     });
     expect(localLlmsProvider.alternateBaseUrls).toEqual([
       'http://localhost:11434/api',
@@ -45,7 +45,7 @@ describe('local llms provider', () => {
     await expect(
       localLlmsProvider.rewrite({
         fetchImpl,
-        model: 'llama3.2',
+        model: 'qwen3.6',
         system: 'Rewrite email.',
         user: '<p>Hello.</p>',
       })
@@ -64,7 +64,7 @@ describe('local llms provider', () => {
           role: 'user',
         },
       ],
-      model: 'llama3.2',
+      model: 'qwen3.6',
       stream: false,
       think: false,
     });
@@ -81,7 +81,7 @@ describe('local llms provider', () => {
       localLlmsProvider.rewrite({
         baseUrl: 'http://localhost:11434',
         fetchImpl,
-        model: 'llama3.2',
+        model: 'qwen3.6',
         system: 'Rewrite email.',
         user: '<p>Hello.</p>',
       })
