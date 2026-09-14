@@ -311,6 +311,14 @@ async function submitRewrite() {
 
   const custom = customPrompt.value.trim();
 
+  if (custom && custom !== optionsSnapshot?.settings?.savedCustomPrompt) {
+    sendMessage({ action: 'options:setCustomPrompt', customPrompt: custom })
+      .then((settings) => {
+        optionsSnapshot = { ...optionsSnapshot, settings };
+      })
+      .catch((error) => warn('ThunderClaude could not save the custom instruction.', error));
+  }
+
   if (modelSelect.value === 'custom' && !customModelInput.value.trim()) {
     throw new Error('Enter a custom model.');
   }
@@ -339,6 +347,7 @@ const popupCanContinue = await loadOptionsSnapshot();
 if (popupCanContinue) {
   renderProviders();
   renderModels();
+  customPrompt.value = optionsSnapshot?.settings?.savedCustomPrompt ?? '';
   form.hidden = false;
 }
 

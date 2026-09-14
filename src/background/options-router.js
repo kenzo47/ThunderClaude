@@ -461,6 +461,19 @@ export async function setThemeOptions({ theme } = {}, options = {}) {
   );
 }
 
+export async function setCustomPromptOptions({ customPrompt } = {}, options = {}) {
+  const normalizedPrompt =
+    typeof customPrompt === 'string' ? customPrompt.trim().slice(0, 1000) : '';
+
+  return updateSettings(
+    (settings) => ({
+      ...settings,
+      savedCustomPrompt: normalizedPrompt,
+    }),
+    options
+  );
+}
+
 export async function handleOptionsMessage(message, options = {}) {
   if (message?.action === 'options:getSnapshot') {
     return getOptionsSnapshot(options);
@@ -484,6 +497,10 @@ export async function handleOptionsMessage(message, options = {}) {
 
   if (message?.action === 'options:setTheme') {
     return setThemeOptions(message, options);
+  }
+
+  if (message?.action === 'options:setCustomPrompt') {
+    return setCustomPromptOptions(message, options);
   }
 
   return undefined;

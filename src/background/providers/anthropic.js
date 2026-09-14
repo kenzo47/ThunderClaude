@@ -38,6 +38,7 @@ async function createMessage({
     endpointHost: new URL(url).hostname,
     fetchImpl,
     headers: {
+      'anthropic-dangerous-direct-browser-access': 'true',
       'anthropic-version': API_VERSION,
       'content-type': 'application/json',
       'x-api-key': key,

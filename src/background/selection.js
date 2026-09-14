@@ -6,8 +6,79 @@ export class SelectionRewriteError extends Error {
   }
 }
 
+const BLOCK_TAGS = new Set([
+  'ADDRESS',
+  'ARTICLE',
+  'ASIDE',
+  'BLOCKQUOTE',
+  'DD',
+  'DIV',
+  'DL',
+  'DT',
+  'FIELDSET',
+  'FIGCAPTION',
+  'FIGURE',
+  'FOOTER',
+  'FORM',
+  'H1',
+  'H2',
+  'H3',
+  'H4',
+  'H5',
+  'H6',
+  'HEADER',
+  'HR',
+  'LI',
+  'MAIN',
+  'NAV',
+  'OL',
+  'P',
+  'PRE',
+  'SECTION',
+  'TABLE',
+  'TD',
+  'TH',
+  'TR',
+  'UL',
+]);
+
 function normalizeSelectedText(text) {
-  return text.trim().replaceAll('\u00a0', ' ');
+  // Collapse all whitespace runs (including the newlines the browser's
+  // Selection.toString() inserts between paragraphs) into a single space, so
+  // a selection spanning multiple <div>/<p> blocks still matches the draft's
+  // HTML text, which has no literal whitespace at those block boundaries.
+  return text.replaceAll('\u00a0', ' ').replace(/\s+/g, ' ').trim();
+}
+
+function collapseWhitespacePositions(rawText, rawPositions) {
+  const text = [];
+  const positions = [];
+  let lastWasSpace = true;
+
+  for (let index = 0; index < rawText.length; index += 1) {
+    const char = rawText[index];
+    const isSpace = /\s/.test(char);
+
+    if (isSpace) {
+      if (lastWasSpace) {
+        continue;
+      }
+      text.push(' ');
+      positions.push(rawPositions[index]);
+      lastWasSpace = true;
+    } else {
+      text.push(char);
+      positions.push(rawPositions[index]);
+      lastWasSpace = false;
+    }
+  }
+
+  while (text.length > 0 && text[text.length - 1] === ' ') {
+    text.pop();
+    positions.pop();
+  }
+
+  return { positions, text: text.join('') };
 }
 
 function findUniqueSelectionOffset(haystack, needle) {
@@ -31,34 +102,46 @@ function findUniqueSelectionOffset(haystack, needle) {
   return firstIndex;
 }
 
-function collectTextNodes(node, textNodes = []) {
+function walkForTextIndex(node, state) {
   if (node.nodeType === 3) {
-    textNodes.push(node);
-    return textNodes;
-  }
-
-  for (const child of node.childNodes ?? []) {
-    collectTextNodes(child, textNodes);
-  }
-
-  return textNodes;
-}
-
-function getDomTextIndex(document) {
-  const textNodes = collectTextNodes(document.body);
-  const positions = [];
-  let text = '';
-
-  for (const node of textNodes) {
     const value = node.nodeValue ?? '';
 
     for (let offset = 0; offset < value.length; offset += 1) {
-      text += value[offset] === '\u00a0' ? ' ' : value[offset];
-      positions.push({ node, offset });
+      state.text += value[offset] === '\u00a0' ? ' ' : value[offset];
+      state.positions.push({ node, offset });
+      state.lastPosition = { node, offset: offset + 1 };
     }
+
+    return;
   }
 
-  return { positions, text };
+  if (node.nodeType !== 1) {
+    return;
+  }
+
+  if (node.tagName === 'BR') {
+    state.text += '\n';
+    state.positions.push(state.lastPosition ?? { node, offset: 0 });
+    return;
+  }
+
+  for (const child of node.childNodes ?? []) {
+    walkForTextIndex(child, state);
+  }
+
+  // Block-level elements render on their own line: insert a synthetic
+  // separator so paragraph boundaries in the draft line up with the
+  // newlines the browser's Selection API reports for the same selection.
+  if (BLOCK_TAGS.has(node.tagName)) {
+    state.text += '\n';
+    state.positions.push(state.lastPosition ?? { node, offset: 0 });
+  }
+}
+
+function getDomTextIndex(document) {
+  const state = { lastPosition: null, positions: [], text: '' };
+  walkForTextIndex(document.body, state);
+  return collapseWhitespacePositions(state.text, state.positions);
 }
 
 function getRangeBoundary(positions, index) {
