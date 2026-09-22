@@ -60,6 +60,7 @@ next-env.d.ts
 
 # claude
 .claude/
+CLAUDE.md
 
 # agents
 .agents/
