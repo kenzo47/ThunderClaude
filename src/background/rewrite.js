@@ -170,6 +170,7 @@ function buildSelectionPrompt({ contextHtml, instruction, selectedText }) {
       'You rewrite selected text from a Thunderbird compose-window email draft.',
       'Return only the replacement HTML fragment for the selected text.',
       'Do not rewrite or repeat unselected draft text.',
+      'Use the rest of the draft (including any quoted thread below it) as context for tone, names, and subject.',
       'Do not include [[TC_IMG_N]] tokens or image tags.',
       TONE_RULE,
       LIST_FORMAT_RULE,

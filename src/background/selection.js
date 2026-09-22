@@ -6,8 +6,15 @@ export class SelectionRewriteError extends Error {
   }
 }
 
+// Selection.toString() returns rendered text (block boundaries and <br> become
+// newlines, source whitespace collapses), while the draft HTML keeps its raw
+// text nodes. Match with all whitespace removed so both sides agree.
 function normalizeSelectedText(text) {
-  return text.trim().replaceAll('\u00a0', ' ');
+  return text.replace(/\s/g, '');
+}
+
+function isWhitespace(character) {
+  return /\s/.test(character);
 }
 
 function findUniqueSelectionOffset(haystack, needle) {
@@ -53,30 +60,15 @@ function getDomTextIndex(document) {
     const value = node.nodeValue ?? '';
 
     for (let offset = 0; offset < value.length; offset += 1) {
-      text += value[offset] === '\u00a0' ? ' ' : value[offset];
+      if (isWhitespace(value[offset])) {
+        continue;
+      }
+      text += value[offset];
       positions.push({ node, offset });
     }
   }
 
   return { positions, text };
-}
-
-function getRangeBoundary(positions, index) {
-  if (index < positions.length) {
-    return positions[index];
-  }
-
-  const lastPosition = positions.at(-1);
-  if (!lastPosition) {
-    throw new SelectionRewriteError('Selected text no longer matches the draft.', {
-      code: 'selection_not_found',
-    });
-  }
-
-  return {
-    node: lastPosition.node,
-    offset: lastPosition.offset + 1,
-  };
 }
 
 function createReplacementFragment(document, replacementHtml, DOMParserImpl) {
@@ -98,12 +90,12 @@ function replaceWithDomParser(html, selectedText, replacementHtml, DOMParserImpl
   const { positions, text } = getDomTextIndex(document);
   const startIndex = findUniqueSelectionOffset(text, selected);
   const endIndex = startIndex + selected.length;
-  const start = getRangeBoundary(positions, startIndex);
-  const end = getRangeBoundary(positions, endIndex);
+  const start = positions[startIndex];
+  const last = positions[endIndex - 1];
   const range = document.createRange();
 
   range.setStart(start.node, start.offset);
-  range.setEnd(end.node, end.offset);
+  range.setEnd(last.node, last.offset + 1);
   range.deleteContents();
   range.insertNode(createReplacementFragment(document, replacementHtml, DOMParserImpl));
 
@@ -149,7 +141,10 @@ function decodeTextWithMap(raw) {
 
       if (value !== null) {
         for (let valueIndex = 0; valueIndex < value.length; valueIndex += 1) {
-          decoded += value[valueIndex] === '\u00a0' ? ' ' : value[valueIndex];
+          if (isWhitespace(value[valueIndex])) {
+            continue;
+          }
+          decoded += value[valueIndex];
           map.push({ end: semiIndex + 1, start: index });
         }
         index = semiIndex;
@@ -157,7 +152,10 @@ function decodeTextWithMap(raw) {
       }
     }
 
-    decoded += raw[index] === '\u00a0' ? ' ' : raw[index];
+    if (isWhitespace(raw[index])) {
+      continue;
+    }
+    decoded += raw[index];
     map.push({ end: index + 1, start: index });
   }
 
