@@ -97,7 +97,7 @@ Prepare the unpacked extension files:
 pnpm build
 ```
 
-This writes `dist/unpacked/` for inspection and `dist/thunderclaude-0.2.0.xpi`
+This writes `dist/unpacked/` for inspection and `dist/thunderclaude-0.2.1.xpi`
 for local installation testing.
 
 ## Install
@@ -127,7 +127,7 @@ Then install it:
 
 1. Open Thunderbird Add-ons Manager.
 2. Use the gear menu to choose "Install Add-on From File".
-3. Select `dist/thunderclaude-0.2.0.xpi`.
+3. Select `dist/thunderclaude-0.2.1.xpi`.
 
 Thunderbird's official add-on install guide documents the Add-ons Manager file
 install flow:
