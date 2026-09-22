@@ -53,6 +53,7 @@ describe('anthropic provider', () => {
     expect(calls[0].options).toMatchObject({
       credentials: 'omit',
       headers: {
+        'anthropic-dangerous-direct-browser-access': 'true',
         'anthropic-version': '2023-06-01',
         'content-type': 'application/json',
         'x-api-key': 'sk-test-fake-key-do-not-use',
