@@ -6,12 +6,12 @@ import { defineChatProviderBehaviorTests } from './chat-provider-test-helper.js'
 describe('zai provider', () => {
   it('matches the provider contract', () => {
     expect(zaiProvider).toMatchObject({
-      defaultModel: 'glm-5.2',
+      defaultModel: 'glm-5.3',
       endpointHost: 'api.z.ai',
       id: 'zai',
       keyHelpUrl: 'https://z.ai/manage-apikey/apikey-list',
       label: 'Z.ai GLM',
-      modelList: ['glm-5.2', 'glm-5.1', 'glm-5-turbo', 'glm-4.7-flash'],
+      modelList: ['glm-5.3', 'glm-5.3-flash', 'glm-5.3-flashx', 'glm-5.2'],
     });
   });
 
@@ -30,10 +30,10 @@ describe('zai provider', () => {
             role: 'user',
           },
         ],
-        model: 'glm-5.1',
+        model: 'glm-5.2',
         stream: false,
       },
-      model: 'glm-5.1',
+      model: 'glm-5.2',
       url: 'https://api.z.ai/api/paas/v4/chat/completions',
     },
   });

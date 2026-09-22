@@ -6,12 +6,12 @@ import { defineChatProviderBehaviorTests } from './chat-provider-test-helper.js'
 describe('deepseek provider', () => {
   it('matches the provider contract', () => {
     expect(deepseekProvider).toMatchObject({
-      defaultModel: 'deepseek-v4-flash',
+      defaultModel: 'deepseek-flash',
       endpointHost: 'api.deepseek.com',
       id: 'deepseek',
       keyHelpUrl: 'https://platform.deepseek.com/api_keys',
       label: 'DeepSeek',
-      modelList: ['deepseek-v4-flash', 'deepseek-v4-pro'],
+      modelList: ['deepseek-flash', 'deepseek-v4-pro'],
     });
   });
 

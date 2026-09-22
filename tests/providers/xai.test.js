@@ -6,12 +6,12 @@ import { defineChatProviderBehaviorTests } from './chat-provider-test-helper.js'
 describe('xai provider', () => {
   it('matches the provider contract', () => {
     expect(xaiProvider).toMatchObject({
-      defaultModel: 'grok-4.6',
+      defaultModel: 'grok-4.7',
       endpointHost: 'api.x.ai',
       id: 'xai',
       keyHelpUrl: 'https://console.x.ai/team/default/api-keys',
       label: 'xAI Grok',
-      modelList: ['grok-4.6', 'grok-4.5', 'grok-4.1-fast'],
+      modelList: ['grok-4.7', 'grok-4.6', 'grok-4.5'],
     });
   });
 

@@ -59,8 +59,8 @@ async function createChatCompletion({
 const deepseekProvider = {
   id: 'deepseek',
   label: 'DeepSeek',
-  defaultModel: 'deepseek-v4-flash',
-  modelList: ['deepseek-v4-flash', 'deepseek-v4-pro'],
+  defaultModel: 'deepseek-flash',
+  modelList: ['deepseek-flash', 'deepseek-v4-pro'],
   defaultBaseUrl: DEFAULT_BASE_URL,
   keyHelpUrl: 'https://platform.deepseek.com/api_keys',
   endpointHost: ENDPOINT_HOST,

@@ -17,8 +17,9 @@ describe('openrouter provider', () => {
         'anthropic/claude-opus-5',
         'anthropic/claude-fable-5.1',
         'google/gemini-3.8-flash',
-        'x-ai/grok-4.6',
-        'z-ai/glm-5.2',
+        'x-ai/grok-4.7',
+        'z-ai/glm-5.3',
+        'deepseek/deepseek-v4.1-flash',
         'custom',
       ],
     });

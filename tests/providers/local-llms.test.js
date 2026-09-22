@@ -27,7 +27,7 @@ describe('local llms provider', () => {
       id: 'local-llms',
       keyHelpUrl: 'https://lmstudio.ai/docs/app/api/endpoints/openai/',
       label: 'Local LLMs',
-      modelList: ['qwen3.6', 'gemma4', 'llama3.3', 'glm-4.7-flash', 'custom'],
+      modelList: ['qwen3.6', 'gemma4', 'glm-5.3-flash', 'deepseek-v4.1-flash', 'custom'],
     });
     expect(localLlmsProvider.alternateBaseUrls).toEqual([
       'http://localhost:11434/api',

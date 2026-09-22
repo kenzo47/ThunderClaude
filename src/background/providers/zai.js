@@ -56,8 +56,8 @@ async function createChatCompletion({
 const zaiProvider = {
   id: 'zai',
   label: 'Z.ai GLM',
-  defaultModel: 'glm-5.2',
-  modelList: ['glm-5.2', 'glm-5.1', 'glm-5-turbo', 'glm-4.7-flash'],
+  defaultModel: 'glm-5.3',
+  modelList: ['glm-5.3', 'glm-5.3-flash', 'glm-5.3-flashx', 'glm-5.2'],
   defaultBaseUrl: DEFAULT_BASE_URL,
   keyHelpUrl: 'https://z.ai/manage-apikey/apikey-list',
   endpointHost: ENDPOINT_HOST,

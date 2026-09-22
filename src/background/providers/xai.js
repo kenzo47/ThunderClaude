@@ -56,8 +56,8 @@ async function createChatCompletion({
 const xaiProvider = {
   id: 'xai',
   label: 'xAI Grok',
-  defaultModel: 'grok-4.6',
-  modelList: ['grok-4.6', 'grok-4.5', 'grok-4.1-fast'],
+  defaultModel: 'grok-4.7',
+  modelList: ['grok-4.7', 'grok-4.6', 'grok-4.5'],
   defaultBaseUrl: DEFAULT_BASE_URL,
   keyHelpUrl: 'https://console.x.ai/team/default/api-keys',
   endpointHost: ENDPOINT_HOST,
