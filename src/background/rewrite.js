@@ -298,9 +298,17 @@ async function rewriteSelectedComposeText({
   DOMParserImpl,
 }) {
   const tokenizedBody = tokenizeImpl(composeBody, { includeAllImages: true });
-  replaceSelectedTextWithHtml(composeBody, selectedText, '', {
+  // Dry run before calling the provider: the selection must resolve, and it
+  // must not swallow an inline image, or the rewrite would drop it.
+  const bodyWithoutSelection = replaceSelectedTextWithHtml(composeBody, selectedText, '', {
     DOMParserImpl,
   });
+  const mediaWithoutSelection = tokenizeImpl(bodyWithoutSelection, { includeAllImages: true });
+  if (mediaWithoutSelection.media.length !== tokenizedBody.media.length) {
+    throw new RewriteError('Selected text contains an image. Select text without images.', {
+      code: 'selection_contains_media',
+    });
+  }
   const prompt = buildSelectionPrompt({
     contextHtml: tokenizedBody.text,
     instruction,

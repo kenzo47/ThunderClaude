@@ -434,6 +434,35 @@ describe('rewrite orchestrator', () => {
     );
   });
 
+  it('rejects a selection that contains an inline image before calling the provider', async () => {
+    const providerCalls = [];
+    const thunderbird = createThunderbird('<p>Hello<img src="cid:first"> Bob</p>');
+    const provider = createProvider('<em>Robert</em>', providerCalls);
+
+    await expect(
+      rewriteComposeDraft(
+        {
+          action: 'rewrite',
+          preset: 'make-formal',
+          providerId: 'test-provider',
+          selectionText: 'Hello Bob',
+          tabId: 7,
+        },
+        {
+          DOMParserImpl: null,
+          getSettingsImpl: async () => getTestSettings(),
+          getProviderImpl: () => provider,
+          resolveProviderCredential: async () => 'stored-provider-key',
+          thunderbird,
+        }
+      )
+    ).rejects.toMatchObject({
+      code: 'selection_spans_markup',
+    });
+    expect(providerCalls).toEqual([]);
+    expect(thunderbird.setCalls).toEqual([]);
+  });
+
   it('does not rewrite when selected text is not unique', async () => {
     const thunderbird = createThunderbird('<p>Bob, meet Bob.</p>');
     const provider = createProvider('<strong>Robert</strong>');
