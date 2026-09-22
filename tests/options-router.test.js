@@ -4,6 +4,7 @@ import {
   completeOnboarding,
   getOptionsSnapshot,
   saveProviderOptions,
+  setCustomPromptOptions,
   setThemeOptions,
   testAndSaveProviderOptions,
   testProviderOptions,
@@ -126,6 +127,24 @@ describe('options router', () => {
     const snapshot = await getOptionsSnapshot({ storageArea });
 
     expect(snapshot.settings.theme).toBe('dark');
+  });
+
+  it('remembers the last custom instruction by default and clears it when disabled', async () => {
+    const snapshot = await getOptionsSnapshot({ storageArea });
+
+    expect(snapshot.settings.rememberCustomPrompt).toBe(true);
+    expect(snapshot.settings.savedCustomPrompt).toBe('');
+
+    await expect(
+      setCustomPromptOptions(
+        { customPrompt: '  Make it shorter.  ', remember: true },
+        { storageArea }
+      )
+    ).resolves.toMatchObject({ rememberCustomPrompt: true, savedCustomPrompt: 'Make it shorter.' });
+
+    await expect(
+      setCustomPromptOptions({ customPrompt: 'Make it shorter.', remember: false }, { storageArea })
+    ).resolves.toMatchObject({ rememberCustomPrompt: false, savedCustomPrompt: '' });
   });
 
   it('removes legacy plaintext key entries from snapshots', async () => {

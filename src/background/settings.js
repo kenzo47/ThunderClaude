@@ -7,6 +7,8 @@ export const DEFAULT_SETTINGS = Object.freeze({
   enabledLocalProviderIds: {},
   keyModeByProvider: {},
   onboardingComplete: false,
+  rememberCustomPrompt: true,
+  savedCustomPrompt: '',
   theme: 'light',
   verifiedProviderIds: {},
 });
@@ -42,6 +44,11 @@ function normalizeSettings(settings = {}) {
       ...(settings.keyModeByProvider ?? {}),
     },
     onboardingComplete: Boolean(settings.onboardingComplete),
+    rememberCustomPrompt: settings.rememberCustomPrompt !== false,
+    savedCustomPrompt:
+      typeof settings.savedCustomPrompt === 'string'
+        ? settings.savedCustomPrompt.slice(0, 1000)
+        : DEFAULT_SETTINGS.savedCustomPrompt,
     theme: settings.theme === 'dark' ? 'dark' : DEFAULT_SETTINGS.theme,
     verifiedProviderIds: {
       ...DEFAULT_SETTINGS.verifiedProviderIds,

@@ -11,6 +11,7 @@ const modelSelect = document.querySelector('#model');
 const customModelField = document.querySelector('#custom-model-field');
 const customModelInput = document.querySelector('#custom-model');
 const customPrompt = document.querySelector('#custom-prompt');
+const rememberPrompt = document.querySelector('#remember-prompt');
 const targetLanguageField = document.querySelector('#target-language-field');
 const targetLanguage = document.querySelector('#target-language');
 const allowImageRelocation = document.querySelector('#allow-image-relocation');
@@ -306,10 +307,28 @@ async function detectComposeTab() {
   updateRewriteAvailability();
 }
 
+function saveCustomPrompt(custom) {
+  const remember = rememberPrompt.checked;
+  const settings = optionsSnapshot?.settings ?? {};
+  const saved = remember ? custom : '';
+
+  if (remember === settings.rememberCustomPrompt && saved === settings.savedCustomPrompt) {
+    return;
+  }
+
+  sendMessage({ action: 'options:setCustomPrompt', customPrompt: custom, remember })
+    .then((nextSettings) => {
+      optionsSnapshot = { ...optionsSnapshot, settings: nextSettings };
+    })
+    .catch((error) => warn('ThunderClaude could not save the custom instruction.', error));
+}
+
 async function submitRewrite() {
   setError(null);
 
   const custom = customPrompt.value.trim();
+
+  saveCustomPrompt(custom);
 
   if (modelSelect.value === 'custom' && !customModelInput.value.trim()) {
     throw new Error('Enter a custom model.');
@@ -339,8 +358,12 @@ const popupCanContinue = await loadOptionsSnapshot();
 if (popupCanContinue) {
   renderProviders();
   renderModels();
+  rememberPrompt.checked = optionsSnapshot?.settings?.rememberCustomPrompt !== false;
+  customPrompt.value = optionsSnapshot?.settings?.savedCustomPrompt ?? '';
   form.hidden = false;
 }
+
+rememberPrompt.addEventListener('change', () => saveCustomPrompt(customPrompt.value.trim()));
 
 for (const button of presetButtons) {
   button.setAttribute('role', 'radio');
