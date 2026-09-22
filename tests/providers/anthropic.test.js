@@ -20,7 +20,7 @@ describe('anthropic provider', () => {
       id: 'anthropic',
       keyHelpUrl: 'https://console.anthropic.com/settings/keys',
       label: 'Anthropic',
-      modelList: ['claude-opus-5', 'claude-sonnet-5', 'claude-fable-5', 'claude-haiku-4-5'],
+      modelList: ['claude-opus-5', 'claude-fable-5-1', 'claude-sonnet-5', 'claude-haiku-4-5'],
     });
   });
 

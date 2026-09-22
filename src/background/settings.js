@@ -3,7 +3,7 @@ const SETTINGS_KEY = 'thunderclaude.settings';
 export const DEFAULT_SETTINGS = Object.freeze({
   customBaseUrlByProvider: {},
   defaultModelByProvider: {},
-  defaultProviderId: 'anthropic',
+  defaultProviderId: 'openai',
   enabledLocalProviderIds: {},
   keyModeByProvider: {},
   onboardingComplete: false,

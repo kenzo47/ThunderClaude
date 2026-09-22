@@ -44,12 +44,12 @@ function providerError(status, message, type) {
 describe('openai provider', () => {
   it('matches the provider contract', () => {
     expect(openaiProvider).toMatchObject({
-      defaultModel: 'gpt-5.6-sol',
+      defaultModel: 'gpt-5.6-luna',
       endpointHost: 'api.openai.com',
       id: 'openai',
       keyHelpUrl: 'https://platform.openai.com/api-keys',
       label: 'OpenAI',
-      modelList: ['gpt-5.6-sol', 'gpt-5.6-terra', 'gpt-5.6-luna', 'gpt-5.5', 'gpt-5.4-mini'],
+      modelList: ['gpt-5.6-luna', 'gpt-6-astra', 'gpt-5.6-sol', 'gpt-5.6-terra'],
     });
   });
 

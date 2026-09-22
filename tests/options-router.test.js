@@ -95,7 +95,7 @@ describe('options router', () => {
     expect(snapshot.providers.map((provider) => provider.id)).toContain('anthropic');
     expect(snapshot.providers.map((provider) => provider.id)).toContain('local-llms');
     expect(snapshot).not.toHaveProperty('session');
-    expect(snapshot.settings.defaultProviderId).toBe('anthropic');
+    expect(snapshot.settings.defaultProviderId).toBe('openai');
     expect(snapshot.settings.enabledLocalProviderIds).toEqual({});
     expect(snapshot.settings.onboardingComplete).toBe(false);
     expect(snapshot.settings.theme).toBe('light');

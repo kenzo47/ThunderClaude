@@ -56,12 +56,13 @@ async function createChatCompletion({
 const openrouterProvider = {
   id: 'openrouter',
   label: 'OpenRouter',
-  defaultModel: 'openai/gpt-5.6-sol',
+  defaultModel: 'openai/gpt-5.6-luna',
   modelList: [
-    'openai/gpt-5.6-sol',
     'openai/gpt-5.6-luna',
+    'openai/gpt-6-astra',
     'anthropic/claude-opus-5',
-    'google/gemini-3.7-flash',
+    'anthropic/claude-fable-5.1',
+    'google/gemini-3.8-flash',
     'x-ai/grok-4.6',
     'z-ai/glm-5.2',
     'custom',

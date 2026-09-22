@@ -44,14 +44,14 @@ function providerError(status, message, type) {
 describe('gemini provider', () => {
   it('matches the provider contract', () => {
     expect(geminiProvider).toMatchObject({
-      defaultModel: 'gemini-3.7-flash',
+      defaultModel: 'gemini-3.8-flash',
       endpointHost: 'generativelanguage.googleapis.com',
       id: 'gemini',
       keyHelpUrl: 'https://aistudio.google.com/app/apikey',
       label: 'Google Gemini',
       modelList: [
+        'gemini-3.8-flash',
         'gemini-3.7-flash',
-        'gemini-3.6-flash',
         'gemini-3.5-flash-lite',
         'gemini-3.1-pro-preview',
       ],
