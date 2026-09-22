@@ -15,7 +15,7 @@ import { getEncryptedValue } from './secure-storage.js';
 import { getSettings } from './settings.js';
 import { restore, tokenize } from './inline-media.js';
 import { handleOptionsMessage } from './options-router.js';
-import { replaceSelectedTextWithHtml } from './selection.js';
+import { extractSelectedHtml, replaceSelectedTextWithHtml } from './selection.js';
 import { splitQuotedReply } from './quoted-reply.js';
 import { splitSignature } from './signature.js';
 import { hasRewriteableText, splitAroundInlineMediaTokens } from '../lib/html-segments.js';
@@ -164,21 +164,21 @@ function buildFixedSegmentPrompt({ instruction, segmentHtml }) {
   };
 }
 
-function buildSelectionPrompt({ contextHtml, instruction, selectedText }) {
+function buildSelectionPrompt({ allowImageRelocation, contextHtml, instruction, selectedHtml }) {
   return {
     system: [
       'You rewrite selected text from a Thunderbird compose-window email draft.',
       'Return only the replacement HTML fragment for the selected text.',
       'Do not rewrite or repeat unselected draft text.',
       'Use the rest of the draft (including any quoted thread below it) as context for tone, names, and subject.',
-      'Do not include [[TC_IMG_N]] tokens or image tags.',
       TONE_RULE,
       LIST_FORMAT_RULE,
+      allowImageRelocation ? RELOCATE_PLACEHOLDER_RULE : KEEP_PLACEHOLDER_RULE,
     ].join(' '),
     user: [
       `Instruction: ${instruction}`,
-      'Selected text:',
-      selectedText,
+      'Selected HTML:',
+      selectedHtml,
       'Draft context HTML:',
       contextHtml,
     ].join('\n\n'),
@@ -197,31 +197,6 @@ async function callProviderRewrite({ baseUrl, key, model, prompt, provider, sign
     signal,
     system: prompt.system,
     user: prompt.user,
-  });
-}
-
-async function rewriteWithRelocatableMedia({
-  baseUrl,
-  instruction,
-  key,
-  model,
-  provider,
-  signal,
-  tokenizedHtml,
-}) {
-  const prompt = buildPrompt({
-    allowImageRelocation: true,
-    instruction,
-    tokenizedHtml,
-  });
-
-  return callProviderRewrite({
-    baseUrl,
-    key,
-    model,
-    prompt,
-    provider,
-    signal,
   });
 }
 
@@ -285,12 +260,14 @@ function assertInlineMediaPreserved(originalMedia, rewrittenMedia) {
 }
 
 async function rewriteSelectedComposeText({
+  allowImageRelocation,
   baseUrl,
   composeBody,
   instruction,
   key,
   model,
   provider,
+  restoreImpl,
   sanitizeImpl,
   selectedText,
   signal,
@@ -298,32 +275,31 @@ async function rewriteSelectedComposeText({
   DOMParserImpl,
 }) {
   const tokenizedBody = tokenizeImpl(composeBody, { includeAllImages: true });
-  // Dry run before calling the provider: the selection must resolve, and it
-  // must not swallow an inline image, or the rewrite would drop it.
-  const bodyWithoutSelection = replaceSelectedTextWithHtml(composeBody, selectedText, '', {
-    DOMParserImpl,
-  });
-  const mediaWithoutSelection = tokenizeImpl(bodyWithoutSelection, { includeAllImages: true });
-  if (mediaWithoutSelection.media.length !== tokenizedBody.media.length) {
-    throw new RewriteError('Selected text contains an image. Select text without images.', {
-      code: 'selection_contains_media',
-    });
-  }
-  const prompt = buildSelectionPrompt({
-    contextHtml: tokenizedBody.text,
-    instruction,
-    selectedText,
-  });
-  const rawOutput = await callProviderRewrite({
+  // Resolving the selection also validates it before any provider is called.
+  const selectedHtml = extractSelectedHtml(composeBody, selectedText, { DOMParserImpl });
+  // Images inside the selection become [[TC_IMG_N]] tokens, exactly like a full
+  // rewrite, and are restored verbatim afterwards.
+  const tokenized = tokenizeImpl(selectedHtml, { includeAllImages: true });
+  const contextHtml = stripInlineMediaTokens(tokenizedBody.text);
+  const restoredOutput = await rewriteTokenizedHtml({
+    allowImageRelocation,
     baseUrl,
+    instruction,
     key,
     model,
-    prompt,
     provider,
+    relocatablePrompt: buildSelectionPrompt({
+      allowImageRelocation: true,
+      contextHtml,
+      instruction,
+      selectedHtml: tokenized.text,
+    }),
+    restoreImpl,
+    sanitizeImpl,
     signal,
+    tokenized,
   });
-  const replacementHtml = sanitizeImpl(rawOutput);
-  const body = replaceSelectedTextWithHtml(composeBody, selectedText, replacementHtml, {
+  const body = replaceSelectedTextWithHtml(composeBody, selectedText, restoredOutput, {
     DOMParserImpl,
   });
   const rewrittenBody = tokenizeImpl(body, { includeAllImages: true });
@@ -331,6 +307,75 @@ async function rewriteSelectedComposeText({
   assertInlineMediaPreserved(tokenizedBody.media, rewrittenBody.media);
 
   return body;
+}
+
+// Shared by the full-draft and selection rewrites: one relocatable-media call
+// first, falling back to per-segment fixed-media calls when the model mishandles
+// the image tokens.
+async function rewriteTokenizedHtml({
+  allowImageRelocation,
+  baseUrl,
+  instruction,
+  key,
+  model,
+  provider,
+  relocatablePrompt,
+  restoreImpl,
+  sanitizeImpl,
+  signal,
+  tokenized,
+}) {
+  const fixedMediaOptions = {
+    baseUrl,
+    instruction,
+    key,
+    model,
+    provider,
+    sanitizeImpl,
+    signal,
+    tokenizedHtml: tokenized.text,
+  };
+
+  if (!allowImageRelocation && tokenized.media.length > 0) {
+    return validateRestoredOutput({
+      rawOutput: await rewriteWithFixedMedia(fixedMediaOptions),
+      requireOriginalOrder: true,
+      restoreImpl,
+      sanitizeImpl,
+      tokenized,
+    });
+  }
+
+  const rawOutput = await callProviderRewrite({
+    baseUrl,
+    key,
+    model,
+    prompt: relocatablePrompt,
+    provider,
+    signal,
+  });
+
+  try {
+    return validateRestoredOutput({
+      rawOutput,
+      requireOriginalOrder: false,
+      restoreImpl,
+      sanitizeImpl,
+      tokenized,
+    });
+  } catch (error) {
+    if (tokenized.media.length === 0 || !canFallbackToFixedMedia(error)) {
+      throw error;
+    }
+
+    return validateRestoredOutput({
+      rawOutput: await rewriteWithFixedMedia(fixedMediaOptions),
+      requireOriginalOrder: true,
+      restoreImpl,
+      sanitizeImpl,
+      tokenized,
+    });
+  }
 }
 
 function validateRestoredOutput({
@@ -447,6 +492,7 @@ export async function rewriteComposeDraft(message, options = {}) {
 
   if (selectedText) {
     const body = await rewriteSelectedComposeText({
+      allowImageRelocation,
       baseUrl,
       composeBody,
       DOMParserImpl: options.DOMParserImpl,
@@ -454,6 +500,7 @@ export async function rewriteComposeDraft(message, options = {}) {
       key,
       model,
       provider,
+      restoreImpl,
       sanitizeImpl,
       selectedText,
       signal: options.signal,
@@ -486,74 +533,23 @@ export async function rewriteComposeDraft(message, options = {}) {
   // Body images of any scheme (cid, http(s), data:image) are tokenized so the
   // model never sees or restyles them. Their original markup is restored
   // verbatim after sanitizing, so the user's images are always left in place.
-  let rawOutput;
-  let restoredOutput;
-
-  if (allowImageRelocation || tokenized.media.length === 0) {
-    rawOutput = await rewriteWithRelocatableMedia({
-      baseUrl,
+  const restoredOutput = await rewriteTokenizedHtml({
+    allowImageRelocation,
+    baseUrl,
+    instruction,
+    key,
+    model,
+    provider,
+    relocatablePrompt: buildPrompt({
+      allowImageRelocation: true,
       instruction,
-      key,
-      model,
-      provider,
-      signal: options.signal,
       tokenizedHtml: tokenized.text,
-    });
-
-    try {
-      restoredOutput = validateRestoredOutput({
-        rawOutput,
-        requireOriginalOrder: false,
-        restoreImpl,
-        sanitizeImpl,
-        tokenized,
-      });
-    } catch (error) {
-      if (
-        !allowImageRelocation ||
-        tokenized.media.length === 0 ||
-        !canFallbackToFixedMedia(error)
-      ) {
-        throw error;
-      }
-
-      rawOutput = await rewriteWithFixedMedia({
-        baseUrl,
-        instruction,
-        key,
-        model,
-        provider,
-        sanitizeImpl,
-        signal: options.signal,
-        tokenizedHtml: tokenized.text,
-      });
-      restoredOutput = validateRestoredOutput({
-        rawOutput,
-        requireOriginalOrder: true,
-        restoreImpl,
-        sanitizeImpl,
-        tokenized,
-      });
-    }
-  } else {
-    rawOutput = await rewriteWithFixedMedia({
-      baseUrl,
-      instruction,
-      key,
-      model,
-      provider,
-      sanitizeImpl,
-      signal: options.signal,
-      tokenizedHtml: tokenized.text,
-    });
-    restoredOutput = validateRestoredOutput({
-      rawOutput,
-      requireOriginalOrder: true,
-      restoreImpl,
-      sanitizeImpl,
-      tokenized,
-    });
-  }
+    }),
+    restoreImpl,
+    sanitizeImpl,
+    signal: options.signal,
+    tokenized,
+  });
   const restoredSignature = tokenizedSignature.text
     ? restoreImpl(tokenizedSignature.text, tokenizedSignature.mediaMap)
     : '';

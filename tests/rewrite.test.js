@@ -1,5 +1,7 @@
 import { describe, expect, it } from 'vitest';
 
+import { JSDOM } from 'jsdom';
+
 import { createMessageRouter, rewriteComposeDraft } from '../src/background/rewrite.js';
 
 function createThunderbird(body) {
@@ -400,7 +402,7 @@ describe('rewrite orchestrator', () => {
 
     expect(providerCalls).toHaveLength(1);
     expect(providerCalls[0].system).toContain('selected text');
-    expect(providerCalls[0].user).toContain('Selected text:');
+    expect(providerCalls[0].user).toContain('Selected HTML:');
     expect(providerCalls[0].user).toContain('Hello Bob');
     expect(thunderbird.setCalls[0].details).toMatchObject({
       body: '<p><strong>Dear Bob</strong>. Bye Bob.</p>',
@@ -434,7 +436,7 @@ describe('rewrite orchestrator', () => {
     );
   });
 
-  it('rejects a selection that contains an inline image before calling the provider', async () => {
+  it('rejects a selection that spans an image when no DOMParser is available', async () => {
     const providerCalls = [];
     const thunderbird = createThunderbird('<p>Hello<img src="cid:first"> Bob</p>');
     const provider = createProvider('<em>Robert</em>', providerCalls);
@@ -987,5 +989,135 @@ describe('runtime message router', () => {
     const router = createMessageRouter();
 
     await expect(router({ action: 'other' })).resolves.toBeUndefined();
+  });
+});
+
+describe('selection rewrite with a DOMParser', () => {
+  const { DOMParser } = new JSDOM('').window;
+  const IMG = '<img src="cid:first" alt="chart">';
+  const IMG2 = '<img src="https://example.com/logo.png" width="40">';
+
+  function run(body, selectionText, output, { allowImageRelocation = false } = {}) {
+    const providerCalls = [];
+    const thunderbird = createThunderbird(body);
+    const provider = createProvider(output, providerCalls);
+    const result = rewriteComposeDraft(
+      {
+        action: 'rewrite',
+        allowImageRelocation,
+        preset: 'make-formal',
+        providerId: 'test-provider',
+        selectionText,
+        tabId: 7,
+      },
+      {
+        DOMParserImpl: DOMParser,
+        getSettingsImpl: async () => getTestSettings(),
+        getProviderImpl: () => provider,
+        resolveProviderCredential: async () => 'stored-provider-key',
+        thunderbird,
+      }
+    );
+
+    return { providerCalls, result, thunderbird };
+  }
+
+  it('rewrites a whole mail selection around an inline image and keeps the image in place', async () => {
+    const body = `<p>Hello Bob,</p><p>${IMG}</p><p>See the chart above.</p>`;
+    const { providerCalls, result, thunderbird } = run(
+      body,
+      'Hello Bob,\n\nSee the chart above.',
+      (input, index) => (index === 0 ? '<p>Dear Bob,</p>' : '<p>Please see the chart above.</p>')
+    );
+
+    await expect(result).resolves.toMatchObject({ scope: 'selection' });
+    // Fixed-media mode rewrites the text segments on either side of the image.
+    expect(providerCalls).toHaveLength(2);
+    for (const call of providerCalls) {
+      expect(call.user).not.toContain('<img');
+      expect(call.user).not.toContain('[[TC_IMG_');
+    }
+    expect(thunderbird.setCalls[0].details.body).toBe(
+      `<p>Dear Bob,</p>${IMG}<p>Please see the chart above.</p>`
+    );
+  });
+
+  it('sends the selection with image tokens in one call when relocation is allowed', async () => {
+    const body = `<p>Hello Bob,</p><p>${IMG}</p><p>See the chart above.</p>`;
+    const { providerCalls, thunderbird } = run(
+      body,
+      'Hello Bob,\n\nSee the chart above.',
+      '<p>Dear Bob, see the chart below.</p><p>[[TC_IMG_1]]</p>',
+      { allowImageRelocation: true }
+    );
+
+    await Promise.resolve();
+    await new Promise((resolve) => setTimeout(resolve, 0));
+    expect(providerCalls).toHaveLength(1);
+    expect(providerCalls[0].user).toContain('[[TC_IMG_1]]');
+    expect(providerCalls[0].user).not.toContain('<img');
+    expect(providerCalls[0].system).toContain('You may move the tokens');
+    expect(thunderbird.setCalls[0].details.body).toBe(
+      `<p>Dear Bob, see the chart below.</p><p>${IMG}</p>`
+    );
+  });
+
+  it('falls back to fixed segments when the model drops a token during relocation', async () => {
+    const body = `<p>Hello Bob,</p><p>${IMG}</p><p>See the chart above.</p>`;
+    const { providerCalls, result, thunderbird } = run(
+      body,
+      'Hello Bob,\n\nSee the chart above.',
+      (input, index) => {
+        if (index === 0) {
+          return '<p>Dear Bob, see the chart.</p>';
+        }
+        return index === 1 ? '<p>Dear Bob,</p>' : '<p>Please see the chart above.</p>';
+      },
+      { allowImageRelocation: true }
+    );
+
+    await result;
+    expect(providerCalls).toHaveLength(3);
+    expect(thunderbird.setCalls[0].details.body).toBe(
+      `<p>Dear Bob,</p>${IMG}<p>Please see the chart above.</p>`
+    );
+  });
+
+  it('keeps two images of different schemes inside a partial selection', async () => {
+    const body = `<p>Intro line.</p><p>Hello ${IMG} Bob ${IMG2} bye.</p><p>Outro line.</p>`;
+    const { providerCalls, result, thunderbird } = run(
+      body,
+      'Hello  Bob  bye.',
+      (input, index) => ['Good day', 'Robert', 'farewell.'][index]
+    );
+
+    await result;
+    expect(providerCalls).toHaveLength(3);
+    expect(thunderbird.setCalls[0].details.body).toBe(
+      `<p>Intro line.</p>Good day${IMG}Robert${IMG2}farewell.<p>Outro line.</p>`
+    );
+  });
+
+  it('strips an image the model invents and keeps the original', async () => {
+    const body = `<p>Hello Bob,</p><p>${IMG}</p><p>Bye.</p>`;
+    const { result, thunderbird } = run(body, 'Hello Bob,\n\nBye.', (input, index) =>
+      index === 0 ? '<p>Dear Bob,</p><img src="https://evil.example/x.png">' : '<p>Goodbye.</p>'
+    );
+
+    await result;
+    expect(thunderbird.setCalls[0].details.body).toBe(`<p>Dear Bob,</p>${IMG}<p>Goodbye.</p>`);
+  });
+
+  it('leaves images outside the selection untouched and out of the context tokens', async () => {
+    const body = `<p>${IMG}</p><p>Hello Bob.</p><p>${IMG2}</p>`;
+    const { providerCalls, result, thunderbird } = run(body, 'Hello Bob.', '<p>Dear Bob.</p>');
+
+    await result;
+    expect(providerCalls).toHaveLength(1);
+    expect(providerCalls[0].user).not.toContain('[[TC_IMG_');
+    expect(providerCalls[0].user).not.toContain('<img');
+    expect(thunderbird.setCalls[0].details.body).toBe(
+      `<p>${IMG}</p><p>Dear Bob.</p><p>${IMG2}</p>`
+    );
   });
 });

@@ -83,7 +83,7 @@ function createReplacementFragment(document, replacementHtml, DOMParserImpl) {
   return fragment;
 }
 
-function replaceWithDomParser(html, selectedText, replacementHtml, DOMParserImpl) {
+function resolveDomRange(html, selectedText, DOMParserImpl) {
   const parser = new DOMParserImpl();
   const document = parser.parseFromString(html, 'text/html');
   const selected = normalizeSelectedText(selectedText);
@@ -96,10 +96,105 @@ function replaceWithDomParser(html, selectedText, replacementHtml, DOMParserImpl
 
   range.setStart(start.node, start.offset);
   range.setEnd(last.node, last.offset + 1);
+  expandRangeToBlocks(document, range);
+
+  return { document, range };
+}
+
+const BLOCK_TAGS = new Set([
+  'BLOCKQUOTE',
+  'DIV',
+  'H1',
+  'H2',
+  'H3',
+  'H4',
+  'H5',
+  'H6',
+  'LI',
+  'OL',
+  'P',
+  'PRE',
+  'SECTION',
+  'UL',
+]);
+
+function isBlankFragment(fragment) {
+  return !fragment.querySelector('img') && !(fragment.textContent ?? '').trim();
+}
+
+// Climbs from a range end through block parents whose content on that side
+// of the range is blank. Returns the nodes reached, nearest first.
+function climbBlankBlocks(document, range, side) {
+  const container = side === 'start' ? range.startContainer : range.endContainer;
+  const offset = side === 'start' ? range.startOffset : range.endOffset;
+  const reached = [];
+  let node = container;
+
+  while (node.parentNode && node.parentNode !== document.body) {
+    const parent = node.parentNode;
+    if (!BLOCK_TAGS.has(parent.nodeName)) {
+      break;
+    }
+    const rest = document.createRange();
+    if (side === 'start') {
+      rest.setStart(parent, 0);
+      rest.setEnd(container, offset);
+    } else {
+      rest.setStart(container, offset);
+      rest.setEnd(parent, parent.childNodes.length);
+    }
+    if (!isBlankFragment(rest.cloneContents())) {
+      break;
+    }
+    reached.push(parent);
+    node = parent;
+  }
+
+  return reached;
+}
+
+// A selection that covers a block's whole content (Selection.toString() drops
+// the surrounding markup) replaces the block itself, so block-level output from
+// the model does not end up nested inside a half-emptied paragraph.
+function expandRangeToBlocks(document, range) {
+  const ancestor = range.commonAncestorContainer;
+  const startBlocks = climbBlankBlocks(document, range, 'start');
+  const endBlocks = climbBlankBlocks(document, range, 'end');
+
+  // Both ends sit at the edges of the same block: replace that block whole.
+  if (startBlocks.includes(ancestor) && endBlocks.includes(ancestor)) {
+    range.selectNode(ancestor);
+    return;
+  }
+
+  // Otherwise never climb past the node that contains both ends, or one end
+  // would jump outside the block the other end still sits in.
+  const startTop = startBlocks.filter((node) => node !== ancestor).at(-1);
+  const endTop = endBlocks.filter((node) => node !== ancestor).at(-1);
+  if (startTop) {
+    range.setStartBefore(startTop);
+  }
+  if (endTop) {
+    range.setEndAfter(endTop);
+  }
+}
+
+function replaceWithDomParser(html, selectedText, replacementHtml, DOMParserImpl) {
+  const { document, range } = resolveDomRange(html, selectedText, DOMParserImpl);
+
   range.deleteContents();
   range.insertNode(createReplacementFragment(document, replacementHtml, DOMParserImpl));
 
   return document.body.innerHTML;
+}
+
+function extractWithDomParser(html, selectedText, DOMParserImpl) {
+  const { document, range } = resolveDomRange(html, selectedText, DOMParserImpl);
+  const container = document.createElement('div');
+
+  container.append(range.cloneContents());
+
+  return container.innerHTML;
 }
 
 function decodeEntity(entity) {
@@ -197,7 +292,9 @@ function tokenizeHtml(html) {
   return tokens;
 }
 
-function replaceWithScanner(html, selectedText, replacementHtml) {
+// Without a DOMParser the selection must sit inside one text run; images and
+// other markup inside the selection are not supported on this path.
+function locateInScanner(html, selectedText) {
   const tokens = tokenizeHtml(html);
   const selected = normalizeSelectedText(selectedText);
   const fullText = tokens
@@ -207,57 +304,64 @@ function replaceWithScanner(html, selectedText, replacementHtml) {
   const startIndex = findUniqueSelectionOffset(fullText, selected);
   const endIndex = startIndex + selected.length;
   let textCursor = 0;
-  let inserted = false;
 
-  const rewrittenHtml = tokens
-    .map((token) => {
-      if (token.type !== 'text') {
-        return token.raw;
-      }
+  for (const [index, token] of tokens.entries()) {
+    if (token.type !== 'text') {
+      continue;
+    }
 
-      const tokenStart = textCursor;
-      const tokenEnd = tokenStart + token.decoded.length;
-      textCursor = tokenEnd;
+    const tokenStart = textCursor;
+    const tokenEnd = tokenStart + token.decoded.length;
+    textCursor = tokenEnd;
 
-      if (endIndex <= tokenStart || startIndex >= tokenEnd) {
-        return token.raw;
-      }
+    if (endIndex <= tokenStart || startIndex >= tokenEnd) {
+      continue;
+    }
 
-      if (startIndex < tokenStart || endIndex > tokenEnd) {
-        throw new SelectionRewriteError(
-          'Selected text spans formatting this runtime cannot safely replace.',
-          {
-            code: 'selection_spans_markup',
-          }
-        );
-      }
+    if (startIndex < tokenStart || endIndex > tokenEnd) {
+      throw new SelectionRewriteError(
+        'Selected text spans formatting this runtime cannot safely replace.',
+        {
+          code: 'selection_spans_markup',
+        }
+      );
+    }
 
-      const rawStart = token.map[startIndex - tokenStart]?.start ?? 0;
-      const rawEnd = token.map[endIndex - tokenStart - 1]?.end ?? token.raw.length;
-      const before = token.raw.slice(0, rawStart);
-      const after = token.raw.slice(rawEnd);
-
-      inserted = true;
-      return `${before}${replacementHtml}${after}`;
-    })
-    .join('');
-
-  if (!inserted) {
-    throw new SelectionRewriteError('Selected text no longer matches the draft.', {
-      code: 'selection_not_found',
-    });
+    return {
+      index,
+      rawEnd: token.map[endIndex - tokenStart - 1]?.end ?? token.raw.length,
+      rawStart: token.map[startIndex - tokenStart]?.start ?? 0,
+      tokens,
+    };
   }
 
-  return rewrittenHtml;
+  throw new SelectionRewriteError('Selected text no longer matches the draft.', {
+    code: 'selection_not_found',
+  });
 }
 
-export function replaceSelectedTextWithHtml(
-  html,
-  selectedText,
-  replacementHtml,
-  { DOMParserImpl = globalThis.DOMParser } = {}
-) {
-  if (typeof html !== 'string' || typeof replacementHtml !== 'string') {
+function replaceWithScanner(html, selectedText, replacementHtml) {
+  const { index, rawEnd, rawStart, tokens } = locateInScanner(html, selectedText);
+
+  return tokens
+    .map((token, tokenIndex) => {
+      if (tokenIndex !== index) {
+        return token.raw;
+      }
+
+      return `${token.raw.slice(0, rawStart)}${replacementHtml}${token.raw.slice(rawEnd)}`;
+    })
+    .join('');
+}
+
+function extractWithScanner(html, selectedText) {
+  const { index, rawEnd, rawStart, tokens } = locateInScanner(html, selectedText);
+
+  return tokens[index].raw.slice(rawStart, rawEnd);
+}
+
+function assertSelectionInput(html, selectedText) {
+  if (typeof html !== 'string') {
     throw new SelectionRewriteError('Selection rewrite input must be HTML strings.', {
       code: 'invalid_selection_rewrite_input',
     });
@@ -268,6 +372,36 @@ export function replaceSelectedTextWithHtml(
       code: 'missing_selection_text',
     });
   }
+}
+
+// Returns the HTML fragment covered by the selection, images included, so it
+// can be tokenized and rewritten the same way as a full draft.
+export function extractSelectedHtml(
+  html,
+  selectedText,
+  { DOMParserImpl = globalThis.DOMParser } = {}
+) {
+  assertSelectionInput(html, selectedText);
+
+  if (typeof DOMParserImpl === 'function') {
+    return extractWithDomParser(html, selectedText, DOMParserImpl);
+  }
+
+  return extractWithScanner(html, selectedText);
+}
+
+export function replaceSelectedTextWithHtml(
+  html,
+  selectedText,
+  replacementHtml,
+  { DOMParserImpl = globalThis.DOMParser } = {}
+) {
+  if (typeof replacementHtml !== 'string') {
+    throw new SelectionRewriteError('Selection rewrite input must be HTML strings.', {
+      code: 'invalid_selection_rewrite_input',
+    });
+  }
+  assertSelectionInput(html, selectedText);
 
   if (typeof DOMParserImpl === 'function') {
     return replaceWithDomParser(html, selectedText, replacementHtml, DOMParserImpl);
