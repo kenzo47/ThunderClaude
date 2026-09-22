@@ -145,6 +145,9 @@ trigger a rewrite; your API key is stored locally and encrypted at rest. See
 Contributions are welcome. Please open an issue or pull request, keep changes
 focused, and run `pnpm test` and `pnpm lint` before every commit.
 
+Thanks to [@robertobuti](https://github.com/robertobuti) for diagnosing the Anthropic
+CORS failure and contributing the remembered custom instruction (v0.3.1).
+
 ## License
 
 Copyright (C) 2026 Kenzo Wijnants
