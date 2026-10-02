@@ -436,7 +436,7 @@ describe('options router', () => {
       testProviderOptions(
         {
           customBaseUrl: 'http://localhost:11434/api',
-          defaultModel: 'qwen3.6',
+          defaultModel: 'qwen3.8',
           localAccessEnabled: false,
           providerId: 'local-llms',
         },
@@ -451,7 +451,7 @@ describe('options router', () => {
     const snapshot = await saveProviderOptions(
       {
         customBaseUrl: 'http://localhost:11434/api',
-        defaultModel: 'qwen3.6',
+        defaultModel: 'qwen3.8',
         keyMode: 'none',
         localAccessEnabled: true,
         providerId: 'local-llms',
@@ -497,7 +497,7 @@ describe('options router', () => {
   it('requires provider verification before onboarding completes', async () => {
     await saveProviderOptions(
       {
-        defaultModel: 'qwen3.6',
+        defaultModel: 'qwen3.8',
         keyMode: 'none',
         localAccessEnabled: true,
         providerId: 'local-llms',
@@ -596,7 +596,7 @@ describe('options router', () => {
   it('marks onboarding complete for a configured and verified provider', async () => {
     await saveProviderOptions(
       {
-        defaultModel: 'qwen3.6',
+        defaultModel: 'qwen3.8',
         keyMode: 'none',
         localAccessEnabled: true,
         providerId: 'local-llms',
@@ -606,7 +606,7 @@ describe('options router', () => {
     await expect(
       testProviderOptions(
         {
-          defaultModel: 'qwen3.6',
+          defaultModel: 'qwen3.8',
           localAccessEnabled: true,
           providerId: 'local-llms',
         },

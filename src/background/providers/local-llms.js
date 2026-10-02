@@ -126,8 +126,8 @@ async function checkLocalServer({ baseUrl, signal, fetchImpl }) {
 const localLlmsProvider = {
   id: 'local-llms',
   label: 'Local LLMs',
-  defaultModel: 'qwen3.6',
-  modelList: ['qwen3.6', 'gemma4', 'glm-5.3-flash', 'deepseek-v4.1-flash', 'custom'],
+  defaultModel: 'qwen3.8',
+  modelList: ['qwen3.8', 'gemma4', 'glm-5.3-flash', 'deepseek-v4.1-flash', 'custom'],
   defaultBaseUrl: DEFAULT_BASE_URL,
   alternateBaseUrls: [DEFAULT_BASE_URL, LM_STUDIO_BASE_URL],
   keyHelpUrl: 'https://lmstudio.ai/docs/app/api/endpoints/openai/',
