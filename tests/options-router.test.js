@@ -102,7 +102,7 @@ describe('options router', () => {
     expect(snapshot.settings.theme).toBe('light');
     expect(snapshot.providerConfigs.anthropic).toMatchObject({
       customBaseUrl: 'https://api.anthropic.com/v1',
-      defaultModel: 'claude-opus-5',
+      defaultModel: 'claude-opus-5-5',
       hasKey: false,
       keyMode: 'encrypted',
     });

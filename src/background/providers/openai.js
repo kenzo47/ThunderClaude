@@ -68,8 +68,8 @@ async function createResponse({
 const openaiProvider = {
   id: 'openai',
   label: 'OpenAI',
-  defaultModel: 'gpt-5.6-luna',
-  modelList: ['gpt-5.6-luna', 'gpt-6-astra', 'gpt-5.6-sol', 'gpt-5.6-terra'],
+  defaultModel: 'gpt-6-luna',
+  modelList: ['gpt-6-luna', 'gpt-6-astra', 'gpt-6.1-sol', 'gpt-5.6-terra'],
   defaultBaseUrl: DEFAULT_BASE_URL,
   keyHelpUrl: 'https://platform.openai.com/api-keys',
   endpointHost: ENDPOINT_HOST,
