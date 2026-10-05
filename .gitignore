@@ -77,3 +77,6 @@ C:\\Users\\*\\AppData\\Local\\lighthouse.*
 graphify-out/
 .graphify*
 .env*.local
+
+# local agent instructions
+AGENTS.md
